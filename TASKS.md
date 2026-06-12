@@ -13,10 +13,10 @@
 **Gate:** 5 of 7 playtesters voluntarily start a second run. Two failed iterations = pivot/kill review.
 
 ### Setup
-- [ ] Godot 4.x project, portrait 1080×2400 base resolution, Git repo initialized
+- [x] Godot 4.x project, portrait 1080×2400 base resolution, Git repo initialized `add-project-scaffold`
 - [ ] Android export pipeline working (test APK on a real mid-range device)
-- [ ] Project structure: `/scenes`, `/scripts`, `/resources/{charms,dice,faces,bosses}`, `/assets`
-- [ ] Seeded RNG service (single source of randomness, injectable seed)
+- [x] Project structure: `/scenes`, `/scripts`, `/resources/{charms,dice,faces,bosses}`, `/assets` `add-project-scaffold`
+- [x] Seeded RNG service (single source of randomness, injectable seed) `add-project-scaffold`
 
 ### Spike (timeboxed: 1 week, then decide)
 - [ ] (?) Spike A: 2D top-down sprite dice with tumble animation curves
