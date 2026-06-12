@@ -1,0 +1,16 @@
+# Godot
+.godot/
+*.translation
+export_presets.cfg
+
+# Android signing — never commit keystores or credentials
+*.keystore
+*.jks
+
+# Imported assets cache (Godot 3 legacy, just in case)
+.import/
+
+# OS
+Thumbs.db
+desktop.ini
+.DS_Store

@@ -1,0 +1,48 @@
+schema: spec-driven
+
+# Project context — injected into every artifact-creation prompt.
+# Full detail lives in PRD.md (product) and TASKS.md (milestone tracker).
+context: |
+  LOCKDOWN — push-your-luck dice roguelike (Balatro-like with real-time lock
+  windows). Mobile, portrait-only, Godot 4.6 / GDScript, solo developer at
+  ~8-10 focused hours/week. Currently in M0 ("Find the Fun" gray-box
+  prototype); see PRD.md and TASKS.md at the repo root.
+
+  ARCHITECTURAL LAWS (every change must comply — from PRD §6):
+  - Determinism: a single seeded RNG service decides every die face BEFORE
+    the tumble begins. The tumble is pure presentation animating to a
+    predetermined result. Physics must NEVER determine gameplay outcomes.
+  - Timers: lock-window timers accumulate `delta` in `_process`
+    (frame-rate independent). Never count frames or physics steps.
+  - Data-driven content: charms, dice, faces, and bosses are Godot
+    `Resource` files (.tres) with effect hooks (on_lock, on_score,
+    on_window, on_throw) — never hardcoded in engine scripts.
+  - Input is touch/mouse agnostic (future desktop port must stay possible).
+  - Game logic must run headless (CI balance sim depends on it): keep
+    logic in plain scripts, presentation in scenes.
+
+  GAME RULES THAT ARE SETTLED (do not re-litigate in proposals):
+  - Tray hard cap: 8 dice.
+  - Scoring uses best-single-partition: each locked die counts in exactly
+    one combo; only charms may break this rule.
+  - Score = (Pips + Bonus Chips) x (Combo Mult + Charm Mult) x Heat.
+  - 3 lock windows per throw; force-lock at end of window 3; only locked
+    dice score.
+  - Run = 6 antes x 3 rounds (Open/Risk/Boss); 3 throws per round.
+  - Steady Mode fixes Heat at the population-average value, not x1.0.
+
+  CONVENTIONS:
+  - Project layout: /scenes, /scripts, /resources/{charms,dice,faces,bosses}, /assets
+  - GDScript style: official Godot style guide (snake_case files/funcs, PascalCase classes).
+  - Unit tests with GUT; scoring/partition logic must be covered headless.
+  - Portrait 1080x2400 base resolution.
+
+rules:
+  proposal:
+    - Keep M0 proposals thin — the milestone goal is a kill-gate playtest, not production polish.
+    - Every proposal must state which design pillar(s) it serves (PRD §2) and include a Non-goals section.
+  specs:
+    - Write scoring/partition edge cases (e.g. quad vs. two pairs, full house vs. triple+pair) as explicit scenarios.
+  tasks:
+    - Break tasks into chunks of max 2 focused hours (nights-and-weekends budget).
+    - A task is done only when verifiable on device or via headless test.
