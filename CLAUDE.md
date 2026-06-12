@@ -5,7 +5,7 @@ Read `PRD.md` for the full design; `TASKS.md` is the single source of truth for 
 
 ## Working rules
 
-- **This project uses OpenSpec (OPSX) for spec-driven development.** No non-trivial code is written without an OpenSpec change. Workflow per feature: `/opsx:new` → review proposal → specs/design → `tasks.md` → `/opsx:apply` → verify on device → `/opsx:archive`.
+- **This project uses OpenSpec (OPSX) for spec-driven development.** No non-trivial code is written without an OpenSpec change. Workflow per feature: `/opsx:propose` → review proposal → specs/design → `tasks.md` → `/opsx:apply` → verify on device → `/opsx:archive`.
 - **Hierarchy of truth:**
   1. `openspec/specs/` — living specification of how the game currently works (merged from archived changes). When code and spec disagree, the spec wins or must be amended via a change.
   2. `PRD.md` — product intent and design pillars. Changes must trace back to a PRD section; if they don't, flag it.
@@ -13,7 +13,7 @@ Read `PRD.md` for the full design; `TASKS.md` is the single source of truth for 
 - **Granularity:** one OpenSpec change ≈ one TASKS.md checkbox (e.g., `lock-window-state-machine`, `charm-effect-hooks`). Never bundle unrelated systems into one change.
 - **Respect milestone gates.** Do not start M(n+1) changes before the M(n) gate review is logged in TASKS.md.
 - **Design pillars veto features** (PRD §2): jackpot payoff, flow under pressure, readable depth, one thumb one screen, collect & unlock. A proposal that serves none of them should be rejected at the proposal stage — that's the cheapest place to kill it.
-- **Never skip the human review between artifacts.** Proposal, specs/design, and tasks each get explicit approval before proceeding. Don't auto-fast-forward (`/opsx:ff`) on gameplay-critical systems (scoring, Heat, lock windows); `ff` is acceptable for plumbing (save system, settings, export pipeline).
+- **Never skip the human review between artifacts.** Proposal, specs/design, and tasks each get explicit approval before proceeding. Don't auto-fast-forward through all artifacts in one sitting on gameplay-critical systems (scoring, Heat, lock windows); batching artifacts is acceptable for plumbing (save system, settings, export pipeline).
 - **Archive discipline:** a change is archived only after its tasks are verified on the Android test device. Archiving merges spec deltas into `openspec/specs/` — stale unarchived changes are tech debt; flag them.
 
 ## Tech stack & conventions
