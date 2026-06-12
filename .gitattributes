@@ -1,0 +1,6 @@
+# Godot files are LF-native; keep them LF everywhere to stop CRLF churn.
+* text=auto eol=lf
+*.png binary
+*.ttf binary
+*.fnt binary
+*.ps1 text eol=crlf
