@@ -17,6 +17,12 @@ var run_seed: int:
 		return _core.run_seed
 
 
+## Headless-testable systems (ThrowController, DiceBag) take RngCore directly;
+## scenes fetch it here so there is still exactly one source of randomness.
+func get_core() -> RngCore:
+	return _core
+
+
 func randi_range(stream: String, from: int, to: int) -> int:
 	return _core.randi_range(stream, from, to)
 

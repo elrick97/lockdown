@@ -1,0 +1,199 @@
+extends Control
+## Gray-box presentation for the throw loop. All gameplay decisions live in
+## ThrowController; this scene renders state, resolves taps to die indices
+## (geometry never reaches the controller), and handles focus-loss pause.
+
+const DIE_SIZE := Vector2(220.0, 220.0)
+const DIE_GAP := 40.0
+const TIMER_BAR_FULL_WIDTH := 1000.0
+const COLOR_UNLOCKED := Color(0.92, 0.92, 0.92)
+const COLOR_LOCKED := Color(0.35, 0.78, 0.42)
+
+var _config: ThrowConfig = preload("res://resources/throw_config.tres")
+var _bag: DiceBag
+var _controller: ThrowController
+var _dice_nodes: Array[ColorRect] = []
+var _scramble_frame := 0
+var _countdown_left := -1.0
+var _focus_paused := false
+
+@onready var _tray: Control = $Tray
+@onready var _timer_bar: ColorRect = $TimerBar
+@onready var _status: Label = $Status
+@onready var _result: Label = $Result
+@onready var _throw_button: Button = $ThrowButton
+@onready var _cover: ColorRect = $FocusCover
+@onready var _countdown_label: Label = $FocusCover/Countdown
+
+
+func _ready() -> void:
+	RngService.start_run()
+	_bag = DiceBag.new(_config.starting_bag_size)
+	_controller = ThrowController.new(_config, _bag, RngService.get_core())
+	_controller.window_started.connect(_on_window_started)
+	_controller.die_locked.connect(_on_die_locked)
+	_controller.reroll_started.connect(_on_reroll_started)
+	_controller.resolved.connect(_on_resolved)
+	_throw_button.pressed.connect(_on_throw_pressed)
+	_timer_bar.visible = false
+	_status.text = "Seed %d — press THROW" % RngService.run_seed
+
+
+func _process(delta: float) -> void:
+	if _countdown_left >= 0.0:
+		_countdown_left -= delta
+		_countdown_label.text = str(ceili(maxf(_countdown_left, 0.001)))
+		if _countdown_left <= 0.0:
+			_countdown_left = -1.0
+			_cover.visible = false
+			get_tree().paused = false
+			_controller.restart_window()
+		return
+	if get_tree().paused:
+		return
+	_controller.tick(delta)
+	_update_visuals()
+
+
+@warning_ignore("integer_division")
+func _update_visuals() -> void:
+	match _controller.state:
+		ThrowController.State.TUMBLE, ThrowController.State.REROLL:
+			_timer_bar.visible = false
+			_scramble_frame += 1
+			for i in _dice_nodes.size():
+				if not _controller.locked[i]:
+					# Visual noise only — never the gameplay RNG (PRD §6).
+					_die_label(i).text = str(1 + (_scramble_frame / 4 + i) % 6)
+		ThrowController.State.LOCK_WINDOW:
+			_timer_bar.visible = true
+			var fraction := _controller.time_remaining() / _config.lock_window_duration_s
+			_timer_bar.size.x = TIMER_BAR_FULL_WIDTH * fraction
+		_:
+			pass
+
+
+func _gui_input(event: InputEvent) -> void:
+	if get_tree().paused or _focus_paused:
+		return
+	var mb := event as InputEventMouseButton
+	if mb == null or not mb.pressed or mb.button_index != MOUSE_BUTTON_LEFT:
+		return
+	_try_lock_at(get_global_mouse_position())
+
+
+## Tap forgiveness (throw-loop spec): lock the nearest unlocked die whose
+## bounds are within tap_forgiveness_radius_px of the tap point.
+func _try_lock_at(point: Vector2) -> void:
+	var best := -1
+	var best_dist := INF
+	for i in _dice_nodes.size():
+		if _controller.locked[i]:
+			continue
+		var rect := _dice_nodes[i].get_global_rect()
+		var clamped := point.clamp(rect.position, rect.end)
+		var dist := point.distance_to(clamped)
+		if dist < best_dist:
+			best_dist = dist
+			best = i
+	if best >= 0 and best_dist <= _config.tap_forgiveness_radius_px:
+		_controller.lock_die(best)
+
+
+func _on_throw_pressed() -> void:
+	_result.text = ""
+	_throw_button.disabled = true
+	_controller.start_throw()
+	_build_dice(_controller.faces.size())
+	_status.text = "Tumbling…"
+
+
+@warning_ignore("integer_division")
+func _build_dice(count: int) -> void:
+	for node in _dice_nodes:
+		node.queue_free()
+	_dice_nodes.clear()
+	var cols := 3
+	var rows := int(ceil(count / 3.0))
+	var grid := Vector2(
+		cols * DIE_SIZE.x + (cols - 1) * DIE_GAP,
+		rows * DIE_SIZE.y + (rows - 1) * DIE_GAP
+	)
+	var origin := (_tray.size - grid) / 2.0
+	for i in count:
+		var die := ColorRect.new()
+		die.color = COLOR_UNLOCKED
+		die.size = DIE_SIZE
+		die.position = origin + Vector2(
+			(i % cols) * (DIE_SIZE.x + DIE_GAP),
+			(i / cols) * (DIE_SIZE.y + DIE_GAP)
+		)
+		die.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var label := Label.new()
+		label.set_anchors_preset(Control.PRESET_FULL_RECT)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.add_theme_font_size_override("font_size", 110)
+		label.add_theme_color_override("font_color", Color(0.1, 0.1, 0.1))
+		die.add_child(label)
+		_tray.add_child(die)
+		_dice_nodes.append(die)
+
+
+func _die_label(index: int) -> Label:
+	return _dice_nodes[index].get_child(0) as Label
+
+
+func _show_real_faces() -> void:
+	for i in _dice_nodes.size():
+		_die_label(i).text = str(_controller.faces[i])
+
+
+func _on_window_started(window_index: int) -> void:
+	_show_real_faces()
+	_status.text = "Window %d / 3 — TAP TO LOCK" % window_index
+
+
+func _on_die_locked(die_index: int, _window_index: int) -> void:
+	_dice_nodes[die_index].color = COLOR_LOCKED
+	_die_label(die_index).text = str(_controller.faces[die_index])
+
+
+func _on_reroll_started(_rerolled_indices: Array[int]) -> void:
+	_status.text = "Re-rolling…"
+
+
+func _on_resolved(result: ThrowResult) -> void:
+	_timer_bar.visible = false
+	_show_real_faces()
+	var times := result.window_remaining_s
+	_result.text = "Faces: %s\nLock order: %s\nTime left W1/W2/W3: %.2f / %.2f / %.2f s" % [
+		str(result.faces), str(result.locked_order), times[0], times[1], times[2]
+	]
+	_status.text = "Resolved — throw again?"
+	_throw_button.disabled = false
+
+
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED:
+			_on_focus_lost()
+		NOTIFICATION_APPLICATION_FOCUS_IN, NOTIFICATION_APPLICATION_RESUMED:
+			_on_focus_returned()
+
+
+func _on_focus_lost() -> void:
+	if _focus_paused or not is_inside_tree():
+		return
+	_focus_paused = true
+	_countdown_left = -1.0
+	get_tree().paused = true
+	_cover.visible = true
+	_countdown_label.text = ""
+
+
+func _on_focus_returned() -> void:
+	if not _focus_paused:
+		return
+	_focus_paused = false
+	_countdown_left = _config.resume_countdown_s

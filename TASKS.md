@@ -24,12 +24,12 @@
 - [ ] Perf test both on mid-range Android → **decision logged in PRD §10.1**
 
 ### Core throw loop
-- [ ] Dice bag model: draw N, return/discard rules (tray hard cap: 8)
-- [ ] **RNG decides all faces before tumble; tumble is presentation only** (architectural law, PRD §6)
-- [ ] Tumble phase (physics or faked, per spike decision — cosmetic either way)
-- [ ] Lock Window state machine: 3 windows, frame-rate-independent drain timer, tap-to-lock (with snap-forgiveness radius), force-lock at end
-- [ ] Focus-loss handling: auto-pause + obscured tray + 3-2-1 resume countdown
-- [ ] Re-roll of unlocked dice between windows
+- [x] Dice bag model: draw N, return/discard rules (tray hard cap: 8) `add-throw-loop`
+- [x] **RNG decides all faces before tumble; tumble is presentation only** (architectural law, PRD §6) `add-throw-loop`
+- [~] Tumble phase (physics or faked, per spike decision — cosmetic either way) `add-throw-loop` *(placeholder scramble; final presentation awaits spike decision)*
+- [x] Lock Window state machine: 3 windows, frame-rate-independent drain timer, tap-to-lock (with snap-forgiveness radius), force-lock at end `add-throw-loop`
+- [x] Focus-loss handling: auto-pause + obscured tray + 3-2-1 resume countdown `add-throw-loop`
+- [x] Re-roll of unlocked dice between windows `add-throw-loop`
 - [ ] Combo detection: **best-single-partition** scoring + GUT unit tests for partition edge cases (quad vs. two pairs, full house vs. triple+pair)
 - [ ] Scoring: Pips × Mult × Heat, with placeholder numbers on screen
 - [ ] Heat: time-remaining → multiplier conversion (expose curve as tunable)

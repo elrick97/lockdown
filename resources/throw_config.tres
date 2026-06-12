@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ThrowConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/throw_config.gd" id="1_cfg"]
+
+[resource]
+script = ExtResource("1_cfg")
+tumble_duration_s = 1.5
+lock_window_duration_s = 2.5
+tap_forgiveness_radius_px = 96.0
+resume_countdown_s = 3.0
+draw_size = 6
+starting_bag_size = 8

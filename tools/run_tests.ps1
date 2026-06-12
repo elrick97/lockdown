@@ -5,10 +5,9 @@ $godot = Get-Command godot_console.exe -ErrorAction SilentlyContinue
 if ($godot) { $godot = $godot.Source } else { $godot = "C:\Tools\Godot\godot_console.exe" }
 if (-not (Test-Path $godot)) { Write-Error "godot_console.exe not found on PATH or at C:\Tools\Godot"; exit 1 }
 
-# First run after a fresh clone needs the import step to build the .godot cache.
-if (-not (Test-Path "$projectRoot\.godot")) {
-    & $godot --headless --path $projectRoot --import
-}
+# Always refresh the import cache: new class_name scripts aren't visible to
+# tests until the global class cache is rebuilt.
+& $godot --headless --path $projectRoot --import | Out-Null
 
 & $godot --headless --path $projectRoot -s res://addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit
 exit $LASTEXITCODE
