@@ -29,9 +29,9 @@
 
 - [x] 6.1 Extend `tests/test_throw_scene_smoke.gd` (or add `test_round_smoke.gd`): drive a fast-config full throw sequence through all 3 antes using sped-up tunables; assert `run_won` or `run_lost` fires and the ante/throw labels reflect final state
 - [x] 6.2 Update `TASKS.md`: tick "Round loop" and "Minimal ante climb" boxes with `add-round-loop`
-- [ ] 6.3 Run full headless suite via `tools/run_tests.ps1`; confirm all tests green
-- [ ] 6.4 Commit
+- [x] 6.3 Run full headless suite via `tools/run_tests.ps1`; confirm all tests green (50/50, 270 asserts)
+- [x] 6.4 Commit
 
 ## 7. On-device verification
 
-- [ ] 7.1 Launch game windowed; play a full 3-ante run to completion (win or lose); confirm ante counter advances, throw budget decrements, running total accumulates, and WIN/LOSE message appears correctly
+- [x] 7.1 Launch game windowed; play a full 3-ante run to completion (win or lose); confirm ante counter advances, throw budget decrements, running total accumulates, and WIN/LOSE message appears correctly ✓ verified
