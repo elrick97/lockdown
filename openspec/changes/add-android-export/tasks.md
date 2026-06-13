@@ -25,9 +25,10 @@
 
 ## 6. On-device verification (manual, user)
 
-- [ ] 6.1 Plug in a mid-range Android phone with USB debugging enabled; run `tools/deploy_apk.ps1`; accept the device authorization prompt if shown
-- [ ] 6.2 Play a full ante on the device: throw, tap-to-lock across windows, confirm portrait orientation, touch locks register with forgiveness, score reads out, and a round win/loss is reachable
-- [ ] 6.3 Note any letterboxing from the desktop window overrides (design risk #1); if present, file a follow-up to guard the overrides behind a desktop-only feature tag
+- [x] 6.1 Plug in a mid-range Android phone with USB debugging enabled; run `tools/deploy_apk.ps1`; accept the device authorization prompt if shown ✓ installed + launched on Pixel 9 (tokay); process alive, logcat clean (no crash/FATAL/resource errors)
+- [x] 6.2a BLOCKER FOUND + FIXED: UI collapsed top-left on Android (fine on desktop). Root cause: Android export strips Control anchor/offset metadata from the hand-authored .tscn. Fix: drive the throw-scene layout in code (`_apply_layout`), stretch mode `viewport`/`keep`. Verified on device: full ante/throw/total HUD, dice grid, lock coloring, and timer bar all render correctly; touch-driven throw + lock confirmed via adb. (design decision #8)
+- [~] 6.2 Player hands-on feel pass: tap-to-lock forgiveness, timer tension, reach a round win/loss — layout fixed and touch confirmed; awaiting user's subjective feel pass
+- [x] 6.3 Window-override letterbox risk (design risk #1) ruled out — overrides never affected Android (they are desktop-only); restored as `.windows`-tagged for desktop fit. Minor top/bottom letterbox bars come from `viewport`/`keep` stretch on the 2400-vs-2424 height delta (acceptable for gray-box)
 
 ## 7. Wrap up
 

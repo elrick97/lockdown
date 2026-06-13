@@ -54,6 +54,15 @@ The throw loop is playable but only verifiable on desktop with a mouse — inade
 
 **Why:** With `export_filter="all_resources"`, GUT's editor/tool scripts were swept into the APK and emitted `Cannot set object script` during export (non-fatal but noisy), and shipping test code in a prototype build is wrong regardless. Excluding them removed the error and trimmed the APK (~27.8 → 26.3 MB).
 
+### 8. Drive the throw-scene layout in code (Android export strips anchors)
+**Decision:** `throw_scene.gd` sets every Control's anchors/offsets at runtime in `_apply_layout()` rather than relying on the `.tscn`. Stretch mode is `viewport` / `keep`.
+
+**Why:** On-device testing surfaced a hard blocker: the gray-box UI rendered correctly on desktop but collapsed into the top-left corner on Android. Root cause (confirmed by logging `anchor_*`/`offset_*` on both platforms): the hand-authored `.tscn` omits the `layout_mode`/`anchors_preset` metadata the editor normally writes, and while a desktop source-load tolerates this, the **Android export step resets every Control's layout properties to defaults** (anchors and offsets alike). Adding `layout_mode` by hand did not fix it; a headless `ResourceSaver` re-save corrupted the scene (dropped the script). Setting the layout in code is platform-independent and guaranteed to apply post-load, so it sidesteps the export-serialization defect entirely.
+
+**Trade-off:** The layout now lives in code, duplicating intent that ideally sits in the scene. Tracked as tech-debt: once the scene is re-saved through the Godot editor (which writes correct metadata), the code layout can be removed and verified against a fresh export. Also discovered: mobile GL export requires ETC2/ASTC (decision #6); a blank headless "configuration error" means reading the GUI export dialog.
+
+**Lesson for future scenes:** author `.tscn` files through the editor (or include `layout_mode`/`anchors_preset`), and always verify UI on an exported build, not just desktop.
+
 ## Risks / Trade-offs
 
 - **[Desktop window override on mobile]** `project.godot` carries `window_width_override=450` / `height_override=1000` added for desktop fit. On Android the app runs fullscreen at device resolution (canvas_items stretch), so these *should* be ignored — but this must be eyeballed on-device. → If the APK letterboxes to 450×1000, guard the overrides behind a desktop-only feature tag.

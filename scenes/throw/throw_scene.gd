@@ -36,6 +36,8 @@ var _focus_paused := false
 
 
 func _ready() -> void:
+	_apply_layout()
+	get_viewport().size_changed.connect(_apply_layout)
 	RngService.start_run()
 	_bag = DiceBag.new(_config.starting_bag_size)
 	_controller = ThrowController.new(_config, _bag, RngService.get_core())
@@ -57,6 +59,36 @@ func _ready() -> void:
 
 	_update_round_labels()
 	_status.text = "Seed %d — press THROW" % RngService.run_seed
+
+
+## Establish the UI layout in code. The hand-authored .tscn loses all Control
+## anchor/offset values through the Android export step (they survive a desktop
+## source-load but reset to defaults in the exported binary scene), so we drive
+## the layout at runtime where it is guaranteed to apply on every platform.
+func _apply_layout() -> void:
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_set_rect(_ante_label, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 110.0)
+	_set_rect(_throw_label, 0.0, 0.0, 0.5, 0.0, 0.0, 115.0, 0.0, 200.0)
+	_set_rect(_total_label, 0.5, 0.0, 1.0, 0.0, 0.0, 115.0, 0.0, 200.0)
+	_set_rect(_status, 0.0, 0.0, 1.0, 0.0, 0.0, 210.0, 0.0, 330.0)
+	_set_rect(_result, 0.0, 0.0, 1.0, 0.0, 40.0, 340.0, -40.0, 590.0)
+	_set_rect(_timer_bar, 0.0, 0.0, 0.0, 0.0, 40.0, 600.0, 1040.0, 635.0)
+	_set_rect(_tray, 0.0, 0.25, 1.0, 0.75, 0.0, 0.0, 0.0, 0.0)
+	_set_rect(_throw_button, 0.5, 1.0, 0.5, 1.0, -220.0, -300.0, 220.0, -120.0)
+	_cover.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_countdown_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+
+func _set_rect(c: Control, al: float, at: float, ar: float, ab: float,
+		ol: float, ot: float, orr: float, ob: float) -> void:
+	c.anchor_left = al
+	c.anchor_top = at
+	c.anchor_right = ar
+	c.anchor_bottom = ab
+	c.offset_left = ol
+	c.offset_top = ot
+	c.offset_right = orr
+	c.offset_bottom = ob
 
 
 func _process(delta: float) -> void:
