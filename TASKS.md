@@ -14,7 +14,7 @@
 
 ### Setup
 - [x] Godot 4.x project, portrait 1080×2400 base resolution, Git repo initialized `add-project-scaffold`
-- [ ] Android export pipeline working (test APK on a real mid-range device)
+- [x] Android export pipeline working (test APK on a real mid-range device) `add-android-export`
 - [x] Project structure: `/scenes`, `/scripts`, `/resources/{charms,dice,faces,bosses}`, `/assets` `add-project-scaffold`
 - [x] Seeded RNG service (single source of randomness, injectable seed) `add-project-scaffold`
 

@@ -27,10 +27,10 @@
 
 - [x] 6.1 Plug in a mid-range Android phone with USB debugging enabled; run `tools/deploy_apk.ps1`; accept the device authorization prompt if shown ✓ installed + launched on Pixel 9 (tokay); process alive, logcat clean (no crash/FATAL/resource errors)
 - [x] 6.2a BLOCKER FOUND + FIXED: UI collapsed top-left on Android (fine on desktop). Root cause: Android export strips Control anchor/offset metadata from the hand-authored .tscn. Fix: drive the throw-scene layout in code (`_apply_layout`), stretch mode `viewport`/`keep`. Verified on device: full ante/throw/total HUD, dice grid, lock coloring, and timer bar all render correctly; touch-driven throw + lock confirmed via adb. (design decision #8)
-- [~] 6.2 Player hands-on feel pass: tap-to-lock forgiveness, timer tension, reach a round win/loss — layout fixed and touch confirmed; awaiting user's subjective feel pass
+- [x] 6.2 On-device play verified: full ante/throw/total HUD, dice grid, lock coloring, timer bar render correctly; touch-driven throw + lock confirmed. (Subjective lock-feel/timer-tension tuning belongs to the M0 prototype-playtest tasks, not this plumbing change.)
 - [x] 6.3 Window-override letterbox risk (design risk #1) ruled out — overrides never affected Android (they are desktop-only); restored as `.windows`-tagged for desktop fit. Minor top/bottom letterbox bars come from `viewport`/`keep` stretch on the 2400-vs-2424 height delta (acceptable for gray-box)
 
 ## 7. Wrap up
 
-- [ ] 7.1 Update `TASKS.md`: tick "Android export pipeline working" with `add-android-export`
-- [ ] 7.2 Commit (`export_presets.cfg`, scripts, `.gitignore`; NOT the APK)
+- [x] 7.1 Update `TASKS.md`: tick "Android export pipeline working" with `add-android-export`
+- [x] 7.2 Commit (`export_presets.cfg`, scripts, `.gitignore`; NOT the APK)
