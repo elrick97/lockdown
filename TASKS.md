@@ -30,9 +30,9 @@
 - [x] Lock Window state machine: 3 windows, frame-rate-independent drain timer, tap-to-lock (with snap-forgiveness radius), force-lock at end `add-throw-loop`
 - [x] Focus-loss handling: auto-pause + obscured tray + 3-2-1 resume countdown `add-throw-loop`
 - [x] Re-roll of unlocked dice between windows `add-throw-loop`
-- [ ] Combo detection: **best-single-partition** scoring + GUT unit tests for partition edge cases (quad vs. two pairs, full house vs. triple+pair)
-- [ ] Scoring: Pips × Mult × Heat, with placeholder numbers on screen
-- [ ] Heat: time-remaining → multiplier conversion (expose curve as tunable)
+- [x] Combo detection: **best-single-partition** scoring + GUT unit tests for partition edge cases (quad vs. two pairs, full house vs. triple+pair) `add-scoring`
+- [x] Scoring: Pips × Mult × Heat, with placeholder numbers on screen `add-scoring`
+- [x] Heat: time-remaining → multiplier conversion (expose curve as tunable) `add-scoring`
 - [ ] Round loop: target score, 3 throws, win/lose state
 - [ ] Minimal ante climb (3 antes, hardcoded targets) to give runs an arc
 

@@ -30,4 +30,11 @@ func test_full_throw_resolves_on_screen() -> void:
 		return scene._controller.state == ThrowController.State.RESOLVED, 5.0)
 	assert_eq(scene._controller.state, ThrowController.State.RESOLVED, "throw resolved end-to-end")
 	assert_ne(scene._result.text, "", "resolve readout displayed")
+	assert_true(scene._result.text.contains("="), "readout shows the score formula")
 	assert_false(scene._throw_button.disabled, "throw button re-enabled after resolve")
+	# Score the same resolved throw directly and confirm a real, non-negative total.
+	var bd := ScoringEngine.new().score(
+		scene._controller.last_result, scene._scoring_config,
+		0, scene._config.lock_window_duration_s, false)
+	assert_gt(bd.final_score, 0, "a resolved throw produces a positive score")
+	assert_true(scene._status.text.contains(str(bd.final_score)), "status shows the score")

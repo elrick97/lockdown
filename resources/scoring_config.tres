@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="ScoringConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/scoring_config.gd" id="1_sc"]
+
+[resource]
+script = ExtResource("1_sc")
+pair_chips = 10
+pair_mult = 1
+two_pair_chips = 25
+two_pair_mult = 2
+triple_chips = 30
+triple_mult = 2
+small_straight_chips = 30
+small_straight_mult = 2
+full_house_chips = 50
+full_house_mult = 3
+quad_chips = 60
+quad_mult = 4
+large_straight_chips = 80
+large_straight_mult = 5
+quint_chips = 100
+quint_mult = 8
+base_mult = 1
+heat_min = 1.0
+heat_max = 1.5
+steady_heat = 1.25

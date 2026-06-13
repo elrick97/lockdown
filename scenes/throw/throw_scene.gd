@@ -10,6 +10,8 @@ const COLOR_UNLOCKED := Color(0.92, 0.92, 0.92)
 const COLOR_LOCKED := Color(0.35, 0.78, 0.42)
 
 var _config: ThrowConfig = preload("res://resources/throw_config.tres")
+var _scoring_config: ScoringConfig = preload("res://resources/scoring_config.tres")
+var _scoring := ScoringEngine.new()
 var _bag: DiceBag
 var _controller: ThrowController
 var _dice_nodes: Array[ColorRect] = []
@@ -166,11 +168,9 @@ func _on_reroll_started(_rerolled_indices: Array[int]) -> void:
 func _on_resolved(result: ThrowResult) -> void:
 	_timer_bar.visible = false
 	_show_real_faces()
-	var times := result.window_remaining_s
-	_result.text = "Faces: %s\nLock order: %s\nTime left W1/W2/W3: %.2f / %.2f / %.2f s" % [
-		str(result.faces), str(result.locked_order), times[0], times[1], times[2]
-	]
-	_status.text = "Resolved — throw again?"
+	var breakdown := _scoring.score(result, _scoring_config, 0, _config.lock_window_duration_s, false)
+	_result.text = breakdown.describe()
+	_status.text = "Resolved — score %d. Throw again?" % breakdown.final_score
 	_throw_button.disabled = false
 
 

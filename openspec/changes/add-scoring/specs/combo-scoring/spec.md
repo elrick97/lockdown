@@ -5,7 +5,7 @@ All base values below are named tunables on `ScoringConfig` (current values show
 | Combo | Match | `chips` | `mult` |
 |---|---|---|---|
 | Pair | 2 of a kind | 10 | 1 |
-| Two Pair | two distinct pairs | 20 | 2 |
+| Two Pair | two distinct pairs | 25 | 2 |
 | Triple | 3 of a kind | 30 | 2 |
 | Small Straight | 4-length run | 30 | 2 |
 | Full House | a triple + a pair | 50 | 3 |
@@ -58,7 +58,7 @@ Each locked die SHALL belong to at most one combo. The engine SHALL evaluate the
 
 #### Scenario: Two genuine pairs partition as Two Pair
 - **WHEN** the locked set is 2,2,5,5
-- **THEN** the chosen partition is a single Two Pair combo (chips 20, mult 2), scoring higher than two separate Pairs
+- **THEN** the chosen partition is a single Two Pair combo (chips 25, mult 2), scoring higher than two separate Pairs
 
 ### Requirement: Deterministic tie-break
 When two partitions yield an equal `Score`, the engine SHALL prefer the partition with fewer combos; if still tied, the partition whose highest-ranked combo outranks the other's (rank order: Quint > Large Straight > Quad > Full House > Small Straight > Triple > Two Pair > Pair). This guarantees a single, reproducible result.
