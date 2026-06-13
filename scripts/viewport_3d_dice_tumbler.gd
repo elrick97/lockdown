@@ -127,10 +127,10 @@ func _set_texture(index: int, value: int) -> void:
 func _make_face_texture(value: int) -> ImageTexture:
 	var s := 128
 	var img := Image.create(s, s, false, Image.FORMAT_RGBA8)
-	img.fill(SpriteDiceTumbler.COLOR_UNLOCKED)
+	img.fill(COLOR_FACE)
 	var pip_r := int(s * 0.085)
-	for key in SpriteDiceTumbler._FACE_PIPS[value]:
-		var n: Vector2 = SpriteDiceTumbler._PIP[key]
+	for key in FACE_PIPS[value]:
+		var n: Vector2 = PIP[key]
 		_draw_disc(img, Vector2(n.x * s, n.y * s), pip_r)
 	return ImageTexture.create_from_image(img)
 
@@ -143,4 +143,4 @@ func _draw_disc(img: Image, center: Vector2, r: int) -> void:
 	for y in range(y0, y1 + 1):
 		for x in range(x0, x1 + 1):
 			if Vector2(x, y).distance_to(center) <= r:
-				img.set_pixel(x, y, SpriteDiceTumbler.COLOR_PIP)
+				img.set_pixel(x, y, COLOR_PIP)

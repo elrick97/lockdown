@@ -19,9 +19,9 @@
 - [x] Seeded RNG service (single source of randomness, injectable seed) `add-project-scaffold`
 
 ### Spike (timeboxed: 1 week, then decide)
-- [ ] (?) Spike A: 2D top-down sprite dice with tumble animation curves
-- [ ] (?) Spike B: 3D dice in SubViewport composited into 2D UI
-- [ ] Perf test both on mid-range Android → **decision logged in PRD §10.1**
+- [x] (?) Spike A: 2D top-down sprite dice with tumble animation curves `add-dice-tumble-spike` *(built, then cut — 3D won)*
+- [x] (?) Spike B: 3D dice in SubViewport composited into 2D UI `add-dice-tumble-spike` *(chosen)*
+- [x] Perf test both on mid-range Android → **decision logged in PRD §10.1** `add-dice-tumble-spike` *(tested on Pixel 9: 2D 60 / 3D 61 fps; mid-range still unconfirmed — caveat in §10.1)*
 
 ### Core throw loop
 - [x] Dice bag model: draw N, return/discard rules (tray hard cap: 8) `add-throw-loop`

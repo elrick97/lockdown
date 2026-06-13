@@ -28,12 +28,12 @@
 
 ## 5. Decision
 
-- [~] 5.1 Comparison done (perf tie on flagship; choice rests on feel) — awaiting user's 2D-vs-3D call (design-pillar judgment)
-- [ ] 5.2 Log the decision + rationale + the captured numbers in **PRD §10.1** (open question #5), with the Pixel-9-upper-bound + needs-mid-range-confirmation caveat
-- [ ] 5.3 Delete the losing renderer's spike code; keep the seam + chosen renderer
+- [x] 5.1 Comparison done (perf tie on flagship; choice rests on feel) — user chose **3D**
+- [x] 5.2 Logged decision + rationale + captured numbers in **PRD §10.1** (resolves open questions #1 and #5) with the Pixel-9-upper-bound + needs-mid-range-confirmation caveat
+- [x] 5.3 Deleted the 2D renderer (`sprite_dice_tumbler.gd`) and the A/B toggle + `tumble_renderer` enum; moved shared pip constants into the `DiceTumbler` base; scene defaults to the 3D renderer. Verified clean on device.
 
 ## 6. Wrap up
 
-- [x] 6.1 Full headless suite green via `tools/run_tests.ps1` (50/50 with the seam + both renderers)
-- [ ] 6.2 Update `TASKS.md`: tick Spike A, Spike B, and the perf-test/decision boxes with `add-dice-tumble-spike`
-- [ ] 6.3 Commit
+- [x] 6.1 Full headless suite green via `tools/run_tests.ps1` (50/50, before and after the 2D removal)
+- [x] 6.2 Updated `TASKS.md`: ticked Spike A, Spike B, and the perf-test/decision boxes with `add-dice-tumble-spike`
+- [x] 6.3 Commit

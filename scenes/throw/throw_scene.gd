@@ -15,7 +15,6 @@ var _arc: AnteArc
 var _round: RoundState
 var _pending_target: int = 0
 var _tumbler: DiceTumbler
-var _perf_toggle: Button
 var _countdown_left := -1.0
 var _focus_paused := false
 
@@ -53,57 +52,11 @@ func _ready() -> void:
 	_round.round_won.connect(_on_round_won)
 	_round.round_lost.connect(_on_round_lost)
 
-	_tumbler = _make_tumbler()
+	_tumbler = Viewport3DDiceTumbler.new()
 	_tray.add_child(_tumbler)
-	_build_perf_toggle()
 
 	_update_round_labels()
 	_status.text = "Seed %d — press THROW" % RngService.run_seed
-
-
-## Dice-tumble spike A/B seam: instantiate the renderer selected in ThrowConfig.
-func _make_tumbler() -> DiceTumbler:
-	match _config.tumble_renderer:
-		ThrowConfig.TumbleRenderer.VIEWPORT_3D:
-			return Viewport3DDiceTumbler.new()
-		_:
-			return SpriteDiceTumbler.new()
-
-
-## Spike perf/A-B harness: a top-left overlay showing FPS + active renderer,
-## tappable to switch renderers live so 2D and 3D can be compared on-device.
-func _build_perf_toggle() -> void:
-	_perf_toggle = Button.new()
-	_perf_toggle.add_theme_font_size_override("font_size", 30)
-	_perf_toggle.pressed.connect(_toggle_renderer)
-	add_child(_perf_toggle)
-	_perf_toggle.anchor_left = 0.0
-	_perf_toggle.anchor_top = 0.0
-	_perf_toggle.anchor_right = 0.0
-	_perf_toggle.anchor_bottom = 0.0
-	_perf_toggle.offset_left = 12.0
-	_perf_toggle.offset_top = 12.0
-	_perf_toggle.offset_right = 312.0
-	_perf_toggle.offset_bottom = 92.0
-
-
-func _toggle_renderer() -> void:
-	if _config.tumble_renderer == ThrowConfig.TumbleRenderer.VIEWPORT_3D:
-		_config.tumble_renderer = ThrowConfig.TumbleRenderer.SPRITE_2D
-	else:
-		_config.tumble_renderer = ThrowConfig.TumbleRenderer.VIEWPORT_3D
-	if _tumbler != null:
-		_tumbler.queue_free()
-	_tumbler = _make_tumbler()
-	_tray.add_child(_tumbler)
-	# Re-show the current board in the new renderer if a throw is live.
-	if not _controller.faces.is_empty():
-		_tumbler.build(_controller.faces.size())
-		_tumbler.reveal(_controller.faces, _controller.locked)
-
-
-func _renderer_name() -> String:
-	return "3D" if _config.tumble_renderer == ThrowConfig.TumbleRenderer.VIEWPORT_3D else "2D"
 
 
 ## Establish the UI layout in code. The hand-authored .tscn loses all Control
@@ -146,8 +99,6 @@ func _process(delta: float) -> void:
 			get_tree().paused = false
 			_controller.restart_window()
 		return
-	if _perf_toggle != null:
-		_perf_toggle.text = "%s  ·  %d fps" % [_renderer_name(), Engine.get_frames_per_second()]
 	if get_tree().paused:
 		return
 	_controller.tick(delta)

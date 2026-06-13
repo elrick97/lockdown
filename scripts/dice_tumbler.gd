@@ -10,6 +10,24 @@ const COLS := 3
 const DIE_SIZE := Vector2(220.0, 220.0)
 const DIE_GAP := 40.0
 
+# Shared die-face look (used by renderers to draw/generate pip faces).
+const COLOR_FACE := Color(0.92, 0.92, 0.92)
+const COLOR_LOCKED := Color(0.35, 0.78, 0.42)
+const COLOR_PIP := Color(0.12, 0.12, 0.12)
+const PIP := {
+	"tl": Vector2(0.28, 0.28), "tc": Vector2(0.5, 0.28), "tr": Vector2(0.72, 0.28),
+	"ml": Vector2(0.28, 0.5), "c": Vector2(0.5, 0.5), "mr": Vector2(0.72, 0.5),
+	"bl": Vector2(0.28, 0.72), "bc": Vector2(0.5, 0.72), "br": Vector2(0.72, 0.72),
+}
+const FACE_PIPS := {
+	1: ["c"],
+	2: ["tl", "br"],
+	3: ["tl", "c", "br"],
+	4: ["tl", "tr", "bl", "br"],
+	5: ["tl", "tr", "c", "bl", "br"],
+	6: ["tl", "ml", "bl", "tr", "mr", "br"],
+}
+
 var count: int = 0
 var faces: Array[int] = []
 var locked: Array[bool] = []

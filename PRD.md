@@ -178,13 +178,23 @@ Examples: lock windows halved; 1s become blanks; must lock ≥3 dice in Window 1
 
 | # | Question | Type | Owner | Blocking? |
 |---|---|---|---|---|
-| 1 | 2D sprite dice vs. 3D SubViewport dice | Tech/feel | Prototype week 1 | Yes (M0) |
+| 1 | ~~2D sprite vs. 3D SubViewport dice~~ → **3D chosen** (see §10.1) | Tech/feel | M0 spike | **Resolved** |
 | 2 | Is the lock window fun, or stressful in a bad way? | Design | M0 playtest | Yes (M0) |
 | 3 | Heat formula: additive Mult vs. multiplicative? | Balance | M1 tuning | No |
 | 4 | Name: "Lockdown" carries pandemic connotation + title collisions — rename? | Brand | End of M1 (affects art direction) | No |
-| 5 | Physics tumble on low-end Android — fake it with animation curves? | Tech | M0 perf test | No |
+| 5 | ~~Physics tumble vs. animation curves~~ → **animation curves** (see §10.1) | Tech | M0 spike | **Resolved** |
 | 6 | EU consumer law / PEGI rating re: dice imagery (gambling adjacency) | Legal | Before launch | No |
 | 7 | Music: license vs. commission (Balatro proves the soundtrack matters) | Production | M3 | No |
+
+### 10.1 Resolved: dice tumble presentation (M0 spike `add-dice-tumble-spike`)
+
+**Decision: 3D dice in a SubViewport, animated by curves (no physics).**
+
+Both a 2D procedural-pip renderer and a 3D SubViewport renderer (cubes of textured quads, lit, tumbling) were built behind a common `DiceTumbler` seam and A/B-toggled on-device. Under full tumble load on the test device (Pixel 9): **2D ≈ 60 fps, 3D ≈ 61 fps** — both at the 60 cap, so the flagship could not discriminate on performance.
+
+The choice was therefore made on feel: the 3D tumble has materially more spectacle (serves the *jackpot payoff* pillar and is a stronger devlog/marketing asset) while remaining readable, settling flat-faced when the lock window opens. Tumbling is driven entirely by animation curves to predetermined faces — physics never determines outcomes (architectural law, PRD §6), which also keeps the headless determinism tests valid.
+
+**Caveat (carry into M1/M2):** the perf verdict is an upper bound — mid-range Android performance and battery cost are **unconfirmed**. Re-measure 3D on a real mid-range device; if it struggles, the 2D renderer (in git history at the spike commit) can be reinstated through the same `DiceTumbler` seam, possibly as a low-end/Steady-Mode fallback.
 
 ## 11. Milestones (detail in TASKS.md)
 
