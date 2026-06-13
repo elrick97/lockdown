@@ -1,9 +1,12 @@
 # Godot
 .godot/
 *.translation
-export_presets.cfg
+
+# Build output — generated APKs, never committed
+build/
 
 # Android signing — never commit keystores or credentials
+# (export_presets.cfg IS committed: debug-only config, no secrets — see CLAUDE.md)
 *.keystore
 *.jks
 
