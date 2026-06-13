@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="AnteConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ante_config.gd" id="1_cfg"]
+
+[resource]
+script = ExtResource("1_cfg")
+targets = Array[int]([150, 350, 700])
+throws_per_round = 3

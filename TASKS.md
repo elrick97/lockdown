@@ -33,8 +33,8 @@
 - [x] Combo detection: **best-single-partition** scoring + GUT unit tests for partition edge cases (quad vs. two pairs, full house vs. triple+pair) `add-scoring`
 - [x] Scoring: Pips × Mult × Heat, with placeholder numbers on screen `add-scoring`
 - [x] Heat: time-remaining → multiplier conversion (expose curve as tunable) `add-scoring`
-- [ ] Round loop: target score, 3 throws, win/lose state
-- [ ] Minimal ante climb (3 antes, hardcoded targets) to give runs an arc
+- [x] Round loop: target score, 3 throws, win/lose state `add-round-loop`
+- [x] Minimal ante climb (3 antes, hardcoded targets) to give runs an arc `add-round-loop`
 
 ### Prototype playtest
 - [ ] Internal: 20 self-runs, note where boredom/frustration hits

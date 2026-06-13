@@ -11,9 +11,13 @@ const COLOR_LOCKED := Color(0.35, 0.78, 0.42)
 
 var _config: ThrowConfig = preload("res://resources/throw_config.tres")
 var _scoring_config: ScoringConfig = preload("res://resources/scoring_config.tres")
+var _ante_config: AnteConfig = preload("res://resources/ante_arc.tres")
 var _scoring := ScoringEngine.new()
 var _bag: DiceBag
 var _controller: ThrowController
+var _arc: AnteArc
+var _round: RoundState
+var _pending_target: int = 0
 var _dice_nodes: Array[ColorRect] = []
 var _scramble_frame := 0
 var _countdown_left := -1.0
@@ -26,6 +30,9 @@ var _focus_paused := false
 @onready var _throw_button: Button = $ThrowButton
 @onready var _cover: ColorRect = $FocusCover
 @onready var _countdown_label: Label = $FocusCover/Countdown
+@onready var _ante_label: Label = $AnteLabel
+@onready var _throw_label: Label = $ThrowLabel
+@onready var _total_label: Label = $TotalLabel
 
 
 func _ready() -> void:
@@ -38,6 +45,17 @@ func _ready() -> void:
 	_controller.resolved.connect(_on_resolved)
 	_throw_button.pressed.connect(_on_throw_pressed)
 	_timer_bar.visible = false
+
+	_arc = AnteArc.new(_ante_config)
+	_arc.ante_advanced.connect(_on_ante_advanced)
+	_arc.run_won.connect(_on_run_won)
+	_arc.run_lost.connect(_on_run_lost)
+
+	_round = RoundState.new(_arc.target_for(1), _ante_config.throws_per_round)
+	_round.round_won.connect(_on_round_won)
+	_round.round_lost.connect(_on_round_lost)
+
+	_update_round_labels()
 	_status.text = "Seed %d — press THROW" % RngService.run_seed
 
 
@@ -103,6 +121,9 @@ func _try_lock_at(point: Vector2) -> void:
 
 
 func _on_throw_pressed() -> void:
+	if _pending_target > 0:
+		_round.reset(_pending_target)  # reuses same object; signals stay connected
+		_pending_target = 0
 	_result.text = ""
 	_throw_button.disabled = true
 	_controller.start_throw()
@@ -151,6 +172,12 @@ func _show_real_faces() -> void:
 		_die_label(i).text = str(_controller.faces[i])
 
 
+func _update_round_labels() -> void:
+	_ante_label.text = "ANTE %d / %d" % [_arc.current_ante, _ante_config.targets.size()]
+	_throw_label.text = "Throw %d / %d" % [_round.current_throw, _ante_config.throws_per_round]
+	_total_label.text = "Total: %d / %d" % [_round.total, _round.target]
+
+
 func _on_window_started(window_index: int) -> void:
 	_show_real_faces()
 	_status.text = "Window %d / 3 — TAP TO LOCK" % window_index
@@ -170,8 +197,42 @@ func _on_resolved(result: ThrowResult) -> void:
 	_show_real_faces()
 	var breakdown := _scoring.score(result, _scoring_config, 0, _config.lock_window_duration_s, false)
 	_result.text = breakdown.describe()
-	_status.text = "Resolved — score %d. Throw again?" % breakdown.final_score
+	_round.add_score(breakdown.final_score)
+	_update_round_labels()
+	if _round.is_done:
+		return  # round_won or round_lost signal already handled button + status
+	var throws_left := _ante_config.throws_per_round - _round.current_throw
+	_status.text = "Score %d — %d throw(s) left" % [breakdown.final_score, throws_left]
 	_throw_button.disabled = false
+
+
+func _on_round_won() -> void:
+	_arc.on_round_won()
+
+
+func _on_round_lost() -> void:
+	_arc.on_round_lost()
+
+
+func _on_ante_advanced(new_ante: int, new_target: int) -> void:
+	_pending_target = new_target
+	_ante_label.text = "ANTE %d / %d" % [new_ante, _ante_config.targets.size()]
+	_throw_label.text = "Throw 0 / %d" % _ante_config.throws_per_round
+	_total_label.text = "Total: 0 / %d" % new_target
+	_status.text = "Ante %d cleared! Press THROW for ante %d." % [new_ante - 1, new_ante]
+	_throw_button.disabled = false
+
+
+func _on_run_won() -> void:
+	_update_round_labels()
+	_status.text = "YOU WIN!"
+	_throw_button.disabled = true
+
+
+func _on_run_lost() -> void:
+	_update_round_labels()
+	_status.text = "GAME OVER."
+	_throw_button.disabled = true
 
 
 func _notification(what: int) -> void:
