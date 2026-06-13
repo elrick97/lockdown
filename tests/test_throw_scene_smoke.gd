@@ -18,11 +18,11 @@ func test_full_throw_resolves_on_screen() -> void:
 	scene._config = _fast_config()
 	add_child_autofree(scene)
 	scene._on_throw_pressed()
-	assert_eq(scene._dice_nodes.size(), 6, "gray-box dice built on throw")
+	assert_eq(scene._tumbler.count, 6, "tumbler built dice on throw")
 	# Let tumble finish, then tap-lock the first die through the forgiveness path.
 	await wait_until(func() -> bool:
 		return scene._controller.state == ThrowController.State.LOCK_WINDOW, 2.0)
-	var die_center: Vector2 = scene._dice_nodes[0].get_global_rect().get_center()
+	var die_center: Vector2 = scene._tumbler.die_rect(0).get_center()
 	scene._try_lock_at(die_center + Vector2(scene._config.tap_forgiveness_radius_px - 1.0, 0.0))
 	assert_true(scene._controller.locked[0], "tap within forgiveness radius locks the die")
 	# Let the remaining windows expire to force-lock and resolve.

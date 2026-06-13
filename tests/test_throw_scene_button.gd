@@ -13,6 +13,6 @@ func test_button_press_starts_throw_with_shipped_config() -> void:
 	assert_false(scene._throw_button.disabled, "button enabled at launch")
 	scene._throw_button.pressed.emit()
 	assert_eq(scene._controller.state, ThrowController.State.TUMBLE, "throw started")
-	assert_eq(scene._dice_nodes.size(), 6, "dice built")
+	assert_eq(scene._tumbler.count, 6, "dice built")
 	assert_true(scene._throw_button.disabled, "button disabled during throw")
 	get_tree().paused = false

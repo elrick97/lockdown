@@ -3,11 +3,7 @@ extends Control
 ## ThrowController; this scene renders state, resolves taps to die indices
 ## (geometry never reaches the controller), and handles focus-loss pause.
 
-const DIE_SIZE := Vector2(220.0, 220.0)
-const DIE_GAP := 40.0
 const TIMER_BAR_FULL_WIDTH := 1000.0
-const COLOR_UNLOCKED := Color(0.92, 0.92, 0.92)
-const COLOR_LOCKED := Color(0.35, 0.78, 0.42)
 
 var _config: ThrowConfig = preload("res://resources/throw_config.tres")
 var _scoring_config: ScoringConfig = preload("res://resources/scoring_config.tres")
@@ -18,8 +14,8 @@ var _controller: ThrowController
 var _arc: AnteArc
 var _round: RoundState
 var _pending_target: int = 0
-var _dice_nodes: Array[ColorRect] = []
-var _scramble_frame := 0
+var _tumbler: DiceTumbler
+var _perf_toggle: Button
 var _countdown_left := -1.0
 var _focus_paused := false
 
@@ -57,8 +53,57 @@ func _ready() -> void:
 	_round.round_won.connect(_on_round_won)
 	_round.round_lost.connect(_on_round_lost)
 
+	_tumbler = _make_tumbler()
+	_tray.add_child(_tumbler)
+	_build_perf_toggle()
+
 	_update_round_labels()
 	_status.text = "Seed %d — press THROW" % RngService.run_seed
+
+
+## Dice-tumble spike A/B seam: instantiate the renderer selected in ThrowConfig.
+func _make_tumbler() -> DiceTumbler:
+	match _config.tumble_renderer:
+		ThrowConfig.TumbleRenderer.VIEWPORT_3D:
+			return Viewport3DDiceTumbler.new()
+		_:
+			return SpriteDiceTumbler.new()
+
+
+## Spike perf/A-B harness: a top-left overlay showing FPS + active renderer,
+## tappable to switch renderers live so 2D and 3D can be compared on-device.
+func _build_perf_toggle() -> void:
+	_perf_toggle = Button.new()
+	_perf_toggle.add_theme_font_size_override("font_size", 30)
+	_perf_toggle.pressed.connect(_toggle_renderer)
+	add_child(_perf_toggle)
+	_perf_toggle.anchor_left = 0.0
+	_perf_toggle.anchor_top = 0.0
+	_perf_toggle.anchor_right = 0.0
+	_perf_toggle.anchor_bottom = 0.0
+	_perf_toggle.offset_left = 12.0
+	_perf_toggle.offset_top = 12.0
+	_perf_toggle.offset_right = 312.0
+	_perf_toggle.offset_bottom = 92.0
+
+
+func _toggle_renderer() -> void:
+	if _config.tumble_renderer == ThrowConfig.TumbleRenderer.VIEWPORT_3D:
+		_config.tumble_renderer = ThrowConfig.TumbleRenderer.SPRITE_2D
+	else:
+		_config.tumble_renderer = ThrowConfig.TumbleRenderer.VIEWPORT_3D
+	if _tumbler != null:
+		_tumbler.queue_free()
+	_tumbler = _make_tumbler()
+	_tray.add_child(_tumbler)
+	# Re-show the current board in the new renderer if a throw is live.
+	if not _controller.faces.is_empty():
+		_tumbler.build(_controller.faces.size())
+		_tumbler.reveal(_controller.faces, _controller.locked)
+
+
+func _renderer_name() -> String:
+	return "3D" if _config.tumble_renderer == ThrowConfig.TumbleRenderer.VIEWPORT_3D else "2D"
 
 
 ## Establish the UI layout in code. The hand-authored .tscn loses all Control
@@ -101,22 +146,19 @@ func _process(delta: float) -> void:
 			get_tree().paused = false
 			_controller.restart_window()
 		return
+	if _perf_toggle != null:
+		_perf_toggle.text = "%s  ·  %d fps" % [_renderer_name(), Engine.get_frames_per_second()]
 	if get_tree().paused:
 		return
 	_controller.tick(delta)
 	_update_visuals()
 
 
-@warning_ignore("integer_division")
 func _update_visuals() -> void:
 	match _controller.state:
 		ThrowController.State.TUMBLE, ThrowController.State.REROLL:
 			_timer_bar.visible = false
-			_scramble_frame += 1
-			for i in _dice_nodes.size():
-				if not _controller.locked[i]:
-					# Visual noise only — never the gameplay RNG (PRD §6).
-					_die_label(i).text = str(1 + (_scramble_frame / 4 + i) % 6)
+			_tumbler.tick(get_process_delta_time())
 		ThrowController.State.LOCK_WINDOW:
 			_timer_bar.visible = true
 			var fraction := _controller.time_remaining() / _config.lock_window_duration_s
@@ -137,12 +179,14 @@ func _gui_input(event: InputEvent) -> void:
 ## Tap forgiveness (throw-loop spec): lock the nearest unlocked die whose
 ## bounds are within tap_forgiveness_radius_px of the tap point.
 func _try_lock_at(point: Vector2) -> void:
+	if _tumbler == null:
+		return
 	var best := -1
 	var best_dist := INF
-	for i in _dice_nodes.size():
+	for i in _controller.faces.size():
 		if _controller.locked[i]:
 			continue
-		var rect := _dice_nodes[i].get_global_rect()
+		var rect := _tumbler.die_rect(i)
 		var clamped := point.clamp(rect.position, rect.end)
 		var dist := point.distance_to(clamped)
 		if dist < best_dist:
@@ -159,49 +203,9 @@ func _on_throw_pressed() -> void:
 	_result.text = ""
 	_throw_button.disabled = true
 	_controller.start_throw()
-	_build_dice(_controller.faces.size())
+	_tumbler.build(_controller.faces.size())
+	_tumbler.begin_tumble(_controller.faces, _controller.locked, _config.tumble_duration_s)
 	_status.text = "Tumbling…"
-
-
-@warning_ignore("integer_division")
-func _build_dice(count: int) -> void:
-	for node in _dice_nodes:
-		node.queue_free()
-	_dice_nodes.clear()
-	var cols := 3
-	var rows := int(ceil(count / 3.0))
-	var grid := Vector2(
-		cols * DIE_SIZE.x + (cols - 1) * DIE_GAP,
-		rows * DIE_SIZE.y + (rows - 1) * DIE_GAP
-	)
-	var origin := (_tray.size - grid) / 2.0
-	for i in count:
-		var die := ColorRect.new()
-		die.color = COLOR_UNLOCKED
-		die.size = DIE_SIZE
-		die.position = origin + Vector2(
-			(i % cols) * (DIE_SIZE.x + DIE_GAP),
-			(i / cols) * (DIE_SIZE.y + DIE_GAP)
-		)
-		die.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var label := Label.new()
-		label.set_anchors_preset(Control.PRESET_FULL_RECT)
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		label.add_theme_font_size_override("font_size", 110)
-		label.add_theme_color_override("font_color", Color(0.1, 0.1, 0.1))
-		die.add_child(label)
-		_tray.add_child(die)
-		_dice_nodes.append(die)
-
-
-func _die_label(index: int) -> Label:
-	return _dice_nodes[index].get_child(0) as Label
-
-
-func _show_real_faces() -> void:
-	for i in _dice_nodes.size():
-		_die_label(i).text = str(_controller.faces[i])
 
 
 func _update_round_labels() -> void:
@@ -211,22 +215,22 @@ func _update_round_labels() -> void:
 
 
 func _on_window_started(window_index: int) -> void:
-	_show_real_faces()
+	_tumbler.reveal(_controller.faces, _controller.locked)
 	_status.text = "Window %d / 3 — TAP TO LOCK" % window_index
 
 
 func _on_die_locked(die_index: int, _window_index: int) -> void:
-	_dice_nodes[die_index].color = COLOR_LOCKED
-	_die_label(die_index).text = str(_controller.faces[die_index])
+	_tumbler.lock_die(die_index, _controller.faces[die_index])
 
 
 func _on_reroll_started(_rerolled_indices: Array[int]) -> void:
+	_tumbler.begin_tumble(_controller.faces, _controller.locked, _config.tumble_duration_s)
 	_status.text = "Re-rolling…"
 
 
 func _on_resolved(result: ThrowResult) -> void:
 	_timer_bar.visible = false
-	_show_real_faces()
+	_tumbler.reveal(_controller.faces, _controller.locked)
 	var breakdown := _scoring.score(result, _scoring_config, 0, _config.lock_window_duration_s, false)
 	_result.text = breakdown.describe()
 	_round.add_score(breakdown.final_score)
