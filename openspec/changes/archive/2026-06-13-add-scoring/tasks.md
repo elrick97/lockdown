@@ -28,7 +28,7 @@
 
 - [x] 5.1 On resolve, run `ScoringEngine` and show the breakdown: partition (which dice -> which combo), the formula line with real numbers, Heat bonus -- placeholder text, no juice
 - [x] 5.2 Extend the in-tree scene smoke test: after a full throw, assert a non-zero score and a populated breakdown are displayed
-- [~] 5.3 Verify on desktop: throw, lock a recognizable combo, confirm the readout math is right (game launched; human on-screen pass pending user)
+- [x] 5.3 Verify on desktop: throw, lock a recognizable combo, confirm the readout math is right ✓ verified
 
 ## 6. Wrap up
 
