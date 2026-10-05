@@ -1,7 +1,7 @@
 # throw-loop Specification
 
 ## Purpose
-TBD - created by archiving change add-throw-loop. Update Purpose after archive.
+The throw state machine: predetermined faces, three timed lock windows, tap-to-lock, re-rolls and force-lock.
 ## Requirements
 ### Requirement: Throw state machine
 A throw SHALL progress `Draw → Tumble → Lock1 → Reroll → Lock2 → Reroll → Lock3 → ForceLock → Resolved`. On `Resolved` the throw SHALL expose the locked dice (faces and lock order) and the recorded per-window remaining times to downstream consumers (scoring).

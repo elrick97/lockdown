@@ -1,7 +1,7 @@
 # project-structure Specification
 
 ## Purpose
-TBD - created by archiving change add-project-scaffold. Update Purpose after archive.
+Project-level conventions: portrait display configuration, the canonical folder layout, and headless test execution.
 ## Requirements
 ### Requirement: Portrait display configuration
 The Godot project SHALL render at a base resolution of 1080×2400 in portrait orientation, using `canvas_items` stretch mode with `expand` aspect, so UI scales across phone aspect ratios without letterboxing gameplay.

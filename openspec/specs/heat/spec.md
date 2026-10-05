@@ -1,4 +1,7 @@
-# Spec: heat
+# heat Specification
+
+## Purpose
+Heat, the multiplier that converts time left in the lock windows into score, plus the Steady Mode fixed-Heat seam.
 
 Named tunables on `ScoringConfig` (current values): `heat_min` = **1.0**, `heat_max` = **1.5**, `steady_heat` = **1.25** (population-average placeholder for Steady Mode).
 

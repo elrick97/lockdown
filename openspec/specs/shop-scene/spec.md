@@ -1,6 +1,9 @@
-# Spec: shop-scene
+# shop-scene Specification
 
-## ADDED Requirements
+## Purpose
+The shop shown between antes: offers, re-roll and continue.
+
+## Requirements
 
 ### Requirement: Shop displayed after every ante clear (except final)
 After the ante cascade completes and the run is not over, the system SHALL transition to `ShopScene`. After the player presses CONTINUE, the system SHALL transition back to `ThrowScene` with the next ante target.

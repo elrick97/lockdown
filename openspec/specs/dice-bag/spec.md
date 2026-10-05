@@ -1,7 +1,7 @@
 # dice-bag Specification
 
 ## Purpose
-TBD - created by archiving change add-throw-loop. Update Purpose after archive.
+The run's dice bag: which dice exist, how a throw draws from them, and the tray hard cap.
 ## Requirements
 ### Requirement: Bag holds the run's dice
 The run SHALL own a bag of dice. For this change the bag contains identical standard d6 dice; the count is the named tunable `starting_bag_size` (current value: **8**). Composition rules (materials, added/removed dice) arrive in later changes.

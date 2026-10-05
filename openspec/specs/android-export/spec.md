@@ -1,8 +1,11 @@
-# Spec: android-export
+# android-export Specification
+
+## Purpose
+How the project produces a repeatable debug Android build: the portrait export preset, headless APK build, and what must never be committed.
 
 Named values (current): export preset name = **"Android"**; package id = **`com.lockdown.proto`** (placeholder pending M1 name decision); APK output = **`build/lockdown.apk`**; engine = **4.6.3.stable**.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Repeatable headless debug build
 The project SHALL produce a debug APK from a single command (`tools/build_apk.ps1`) with no editor GUI interaction. The script SHALL import the project before exporting (refreshing the class cache, as the test runner does) and SHALL write the APK to `build/lockdown.apk`.

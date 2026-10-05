@@ -1,8 +1,11 @@
-# Spec: ante-arc
+# ante-arc Specification
+
+## Purpose
+The ante climb that gives a run its arc: per-ante target scores and how clearing or failing them advances or ends the run.
 
 Named tunables on `AnteConfig` Resource (current M0 values): `targets` = **[150, 350, 700]** (3 antes). These are the minimum cumulative scores needed to clear each ante.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Ante arc drives run progression
 `AnteArc` SHALL advance through a sequence of antes. After a round is won it checks whether more antes remain: if yes it advances to the next ante; if no it emits `run_won`. If a round is lost it emits `run_lost` immediately.

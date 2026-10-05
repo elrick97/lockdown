@@ -1,7 +1,7 @@
 # seeded-rng Specification
 
 ## Purpose
-TBD - created by archiving change add-project-scaffold. Update Purpose after archive.
+The single seeded source of randomness, so the same seed reproduces the same run.
 ## Requirements
 ### Requirement: Single source of randomness
 The game SHALL provide an autoloaded `RngService` that is the only source of gameplay randomness. Gameplay code MUST NOT call `randi()`, `randf()`, `randomize()`, or create its own `RandomNumberGenerator` instances; presentation-only effects (particle jitter, animation variation) are exempt but MUST NOT feed back into gameplay state.

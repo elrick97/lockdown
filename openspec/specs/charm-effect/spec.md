@@ -1,4 +1,7 @@
-# Spec: charm-effect
+# charm-effect Specification
+
+## Purpose
+The data-driven charm framework: the CharmEffect resource and its four hooks, the context snapshot it reads, and the inventory slot cap.
 
 ## Requirements
 

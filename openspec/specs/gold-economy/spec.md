@@ -1,8 +1,11 @@
-# Spec: gold-economy
+# gold-economy Specification
+
+## Purpose
+The gold economy between antes: income, interest, purchases and re-roll costs.
 
 Named tunables on `ShopConfig` Resource (current values): `base_gold_per_ante` = **4**, `gold_per_leftover_throw` = **1**, `interest_rate` = **0.25**, `max_gold` = **40**, `reroll_cost` = **1**, `offer_slots` = **3**.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Gold earned after each ante
 After an ante is cleared, the system SHALL award gold equal to `base_gold_per_ante + (throws_left * gold_per_leftover_throw)`, where `throws_left` is the number of unused throws in the final round. Both tunables are exposed in `ShopConfig`.
@@ -49,7 +52,7 @@ Pressing RE-ROLL SHALL deduct `ShopConfig.reroll_cost` (default 1) from gold and
 - **THEN** the RE-ROLL button is disabled
 
 ### Requirement: Gold persists across antes within a run
-`GoldLedger` is owned by `RunCoordinator` and survives scene transitions between `ThrowScene` and `ShopScene`. Gold is NOT reset between antes.
+`GoldLedger` SHALL be owned by `RunCoordinator` and survive scene transitions between `ThrowScene` and `ShopScene`. Gold SHALL NOT be reset between antes.
 
 #### Scenario: Gold carries over
 - **WHEN** the player enters the shop with 4 gold, buys nothing, and presses CONTINUE

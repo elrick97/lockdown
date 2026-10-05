@@ -1,8 +1,11 @@
-# Spec: dice-tumble
+# dice-tumble Specification
+
+## Purpose
+The invariants every tumble presentation must honor: faces fixed before motion, time-based settling, and gameplay unaffected by the renderer.
 
 The tumble is the presentation of the throw-loop Tumble/Reroll phases. This capability captures only the invariants both spike renderers must honor; the winning renderer's implementation details are intentionally out of scope (a spike yields a decision, not a behavior contract). Tunable: `tumble_duration_s` (current default on `ThrowConfig`).
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Tumble animates to predetermined faces
 The tumble SHALL animate each unlocked die from a scrambled/in-motion state to its predetermined face, where the face was already drawn from the seeded RNG before the tumble began. The animation SHALL NOT read, consume, or influence the RNG, and SHALL NOT determine or alter any face.

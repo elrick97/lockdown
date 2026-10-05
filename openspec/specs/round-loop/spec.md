@@ -1,8 +1,11 @@
-# Spec: round-loop
+# round-loop Specification
+
+## Purpose
+A round: score accumulated across a fixed budget of throws against the ante target.
 
 Named tunables on `AnteConfig` (current M0 values): `throws_per_round` = **3**.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Round accumulates score across throws
 A round SHALL accumulate the `final_score` of each resolved throw into a running total. The round is won the moment that total meets or exceeds the target score, regardless of how many throws remain.

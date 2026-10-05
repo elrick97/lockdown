@@ -1,4 +1,9 @@
-# Spec: charm-catalog
+# charm-catalog Specification
+
+## Purpose
+The M1 catalog of 12 charms: each charm's trigger, effect and cost, as named tunables.
+
+## Requirements
 
 ### Requirement: M1 charm catalog defines 12 charms
 The game SHALL ship 12 charm types for the M1 vertical slice. Each charm is a `CharmEffect` subclass saved as a `.tres` resource under `res://resources/charms/`. Costs and bonus amounts are **named tunables** (current values shown); balance changes are spec deltas, not silent code edits.
@@ -8,7 +13,7 @@ The game SHALL ship 12 charm types for the M1 vertical slice. Each charm is a `C
 - **THEN** `display_name`, `description`, and `cost` are non-empty and all four hook methods are callable without error
 
 ### Requirement: Speed archetype — Quick Draw (cost: 6)
-If every die in the locked set was locked in Window 1, add `charm_mult += 2.0`.
+The charm SHALL apply: If every die in the locked set was locked in Window 1, add `charm_mult += 2.0`.
 
 #### Scenario: All W1 locks trigger bonus
 - **WHEN** all tray dice are locked in Window 1 with a Pair of 4s at Heat ×1.0
@@ -19,7 +24,7 @@ If every die in the locked set was locked in Window 1, add `charm_mult += 2.0`.
 - **THEN** `charm_mult` remains 0.0
 
 ### Requirement: Speed archetype — Hair Trigger (cost: 4)
-For each die locked in Window 1, add `charm_chips += 5`.
+The charm SHALL apply: For each die locked in Window 1, add `charm_chips += 5`.
 
 #### Scenario: Two W1 locks add 10 chips
 - **WHEN** exactly 2 dice are locked in Window 1 (others in later windows)
@@ -30,7 +35,7 @@ For each die locked in Window 1, add `charm_chips += 5`.
 - **THEN** `charm_chips` remains 0
 
 ### Requirement: Speed archetype — Adrenaline (cost: 4)
-If at least 3 dice are locked in Window 1, add `charm_mult += 1.0`.
+The charm SHALL apply: If at least 3 dice are locked in Window 1, add `charm_mult += 1.0`.
 
 #### Scenario: Threshold met gives mult
 - **WHEN** exactly 3 dice are locked in Window 1 (remaining in later windows)
@@ -41,7 +46,7 @@ If at least 3 dice are locked in Window 1, add `charm_mult += 1.0`.
 - **THEN** `charm_mult` remains 0.0
 
 ### Requirement: Slow archetype — Patient Zero (cost: 4)
-For each die locked in Window 3, add `charm_chips += 5`. (Intended final rule: double that die's Pip contribution. Deferred pending CharmContext face-by-slot extension.)
+The charm SHALL apply: For each die locked in Window 3, add `charm_chips += 5`. (Intended final rule: double that die's Pip contribution. Deferred pending CharmContext face-by-slot extension.)
 
 #### Scenario: W3 locks add chips
 - **WHEN** 4 dice are force-locked in Window 3
@@ -52,7 +57,7 @@ For each die locked in Window 3, add `charm_chips += 5`. (Intended final rule: d
 - **THEN** `charm_chips` remains 0
 
 ### Requirement: Slow archetype — Ice Cold (cost: 6)
-If zero dice were locked in Window 1, add `charm_mult += 3.0`.
+The charm SHALL apply: If zero dice were locked in Window 1, add `charm_mult += 3.0`.
 
 #### Scenario: No W1 locks trigger bonus
 - **WHEN** the locked set has all dice locked in Windows 2 and 3 only
@@ -63,7 +68,7 @@ If zero dice were locked in Window 1, add `charm_mult += 3.0`.
 - **THEN** `charm_mult` remains 0.0
 
 ### Requirement: Value archetype — Loaded (cost: 4)
-For each die in the locked set showing face 6, add `charm_chips += 6`.
+The charm SHALL apply: For each die in the locked set showing face 6, add `charm_chips += 6`.
 
 #### Scenario: Two 6s add 12 chips
 - **WHEN** the locked set contains two 6s
@@ -74,7 +79,7 @@ For each die in the locked set showing face 6, add `charm_chips += 6`.
 - **THEN** `charm_chips` remains 0
 
 ### Requirement: Value archetype — Big Bucks (cost: 3)
-For each die in the locked set showing face 5 or 6, add `charm_chips += 3`.
+The charm SHALL apply: For each die in the locked set showing face 5 or 6, add `charm_chips += 3`.
 
 #### Scenario: One 5 and one 6 add 6 chips
 - **WHEN** the locked set contains one 5 and one 6
@@ -85,7 +90,7 @@ For each die in the locked set showing face 5 or 6, add `charm_chips += 3`.
 - **THEN** `charm_chips` remains 0
 
 ### Requirement: Value archetype — Precision (cost: 6)
-If every die in the locked set shows the same face value, add `charm_mult += 2.0`.
+The charm SHALL apply: If every die in the locked set shows the same face value, add `charm_mult += 2.0`.
 
 #### Scenario: All-same-face triggers bonus
 - **WHEN** the locked set is [4, 4, 4, 4] (all 4s)
@@ -96,7 +101,7 @@ If every die in the locked set shows the same face value, add `charm_mult += 2.0
 - **THEN** `charm_mult` remains 0.0
 
 ### Requirement: Inversion archetype — Snake Charmer (cost: 5)
-If the locked set contains exactly two 1s and the leading combo in the winning partition is a Pair, set `combo_mult = 4` and `bonus_chips = 0`.
+The charm SHALL apply: If the locked set contains exactly two 1s and the leading combo in the winning partition is a Pair, set `combo_mult = 4` and `bonus_chips = 0`.
 
 #### Scenario: Snake eyes give ×4 Mult
 - **WHEN** the locked set is [1, 1] at Heat ×1.0
@@ -107,7 +112,7 @@ If the locked set contains exactly two 1s and the leading combo in the winning p
 - **THEN** `combo_mult` and `bonus_chips` are unchanged
 
 ### Requirement: Combo archetype — Collector (cost: 5)
-Add `charm_mult += 1.0` for each distinct face value present in the locked set.
+The charm SHALL apply: Add `charm_mult += 1.0` for each distinct face value present in the locked set.
 
 #### Scenario: All-different 6-die throw
 - **WHEN** the locked set is [1, 2, 3, 4, 5, 6] (all distinct)
@@ -118,7 +123,7 @@ Add `charm_mult += 1.0` for each distinct face value present in the locked set.
 - **THEN** `charm_mult` is 1.0
 
 ### Requirement: Combo archetype — High Roller (cost: 7)
-If the leading combo in the winning partition is Quad or Quint+, add `charm_chips += 60`.
+The charm SHALL apply: If the leading combo in the winning partition is Quad or Quint+, add `charm_chips += 60`.
 
 #### Scenario: Quad triggers bonus
 - **WHEN** the locked set resolves with a Quad as the top combo
@@ -129,7 +134,7 @@ If the leading combo in the winning partition is Quad or Quint+, add `charm_chip
 - **THEN** `charm_chips` remains 0
 
 ### Requirement: Combo archetype — Straight Edge (cost: 5)
-If the winning partition contains a Small Straight or Large Straight, add `charm_mult += 3.0`.
+The charm SHALL apply: If the winning partition contains a Small Straight or Large Straight, add `charm_mult += 3.0`.
 
 #### Scenario: Large Straight triggers bonus
 - **WHEN** the locked set is [1, 2, 3, 4, 5, 6] resolving as a Large Straight

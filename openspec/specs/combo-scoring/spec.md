@@ -1,4 +1,7 @@
-# Spec: combo-scoring
+# combo-scoring Specification
+
+## Purpose
+How a resolved throw is scored: combo detection with best-single-partition and the base chips/mult table.
 
 All base values below are named tunables on `ScoringConfig` (current values shown); the M0 playtest tunes them. `base_mult` = **1**.
 
