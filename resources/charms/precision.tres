@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="CharmPrecision" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/charms/charm_precision.gd" id="1_precision"]
+
+[resource]
+script = ExtResource("1_precision")
+display_name = "Precision"
+description = "All locked dice on the same face? +2 Mult."
+cost = 6

@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="CharmCollector" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/charms/charm_collector.gd" id="1_collector"]
+
+[resource]
+script = ExtResource("1_collector")
+display_name = "Collector"
+description = "+1 Mult per distinct face value in your locked set."
+cost = 5

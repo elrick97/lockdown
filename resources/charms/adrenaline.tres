@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="CharmAdrenaline" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/charms/charm_adrenaline.gd" id="1_adrenaline"]
+
+[resource]
+script = ExtResource("1_adrenaline")
+display_name = "Adrenaline"
+description = "Lock 3+ dice in Window 1 to score +1 Mult."
+cost = 4

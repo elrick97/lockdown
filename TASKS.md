@@ -52,7 +52,7 @@
 ### Systems
 - [x] Shop scene: charm offers, re-roll, gold economy, interest `add-shop-scene`
 - [x] Charm framework: data-driven `.tres` resources + effect hook system (on_lock, on_score, on_window, on_throw) `add-charm-framework`
-- [ ] 12 launch charms implemented (mix of speed/slow/value/combo archetypes per PRD §4.1)
+- [x] 12 launch charms implemented (mix of speed/slow/value/combo archetypes per PRD §4.1) `add-12-charms`
 - [ ] Dice materials framework + Bone, Iron, Glass
 - [ ] Carving service in shop (face replacement: Wild, Gem, Spark)
 - [ ] Trinkets (consumables): re-tumble, freeze timer

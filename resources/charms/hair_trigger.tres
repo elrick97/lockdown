@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="CharmHairTrigger" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/charms/charm_hair_trigger.gd" id="1_hairtrigger"]
+
+[resource]
+script = ExtResource("1_hairtrigger")
+display_name = "Hair Trigger"
+description = "Each die locked in Window 1 adds +5 Chips."
+cost = 4

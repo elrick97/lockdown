@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="CharmPatientZero" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/charms/charm_patient_zero.gd" id="1_patientzero"]
+
+[resource]
+script = ExtResource("1_patientzero")
+display_name = "Patient Zero"
+description = "Each die locked in Window 3 adds +5 Chips."
+cost = 4
