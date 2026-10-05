@@ -24,3 +24,4 @@ base_mult = 1
 heat_min = 1.0
 heat_max = 1.5
 steady_heat = 1.25
+cascade_duration_s = 0.8

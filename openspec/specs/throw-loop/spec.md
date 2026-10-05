@@ -76,6 +76,16 @@ On focus loss during a throw, the game SHALL pause immediately and obscure the t
 - **WHEN** the app loses focus during tumble or between throws
 - **THEN** the game pauses with the tray obscured and resumes at the same point after the countdown
 
+### Requirement: THROW button re-enable timing
+The THROW button SHALL remain disabled from the moment a throw begins until the score cascade animation fully completes. It SHALL NOT re-enable at the moment the score is computed.
+
+#### Scenario: Button disabled during cascade
+- **WHEN** `ThrowController` emits `resolved`
+- **THEN** the THROW button remains disabled while `ScoreCascade` is running and becomes enabled only after `ScoreCascade` emits `finished`
+
+#### Scenario: Button disabled when round is complete
+- **WHEN** the cascade completes and `RoundState` is done (round won or lost)
+- **THEN** the THROW button remains disabled (the round-won/lost state takes precedence)
 
 ### Requirement: Charm hooks fire at throw-loop state transitions
 `ThrowController` SHALL accept an optional `CharmInventory` at construction (default `null`). When an inventory is provided, it SHALL dispatch hook calls at the following moments:

@@ -148,3 +148,9 @@ func _render_tumbling(_progress: float) -> void:
 
 func _render_face(_index: int, _face: int, _is_locked: bool) -> void:
 	pass
+
+
+## Flash die `index` to `color` and back to its current tint over `duration` s.
+## No-op in the base class; implemented by concrete renderers.
+func flash_die(_index: int, _color: Color, _duration: float) -> void:
+	pass

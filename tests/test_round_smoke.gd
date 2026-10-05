@@ -46,6 +46,9 @@ func _do_throw(scene: Control) -> void:
 	scene._on_throw_pressed()
 	await wait_until(func() -> bool:
 		return scene._controller.state == ThrowController.State.RESOLVED, 3.0)
+	# Skip cascade animation so game state updates synchronously in tests.
+	if scene._cascade != null:
+		scene._cascade.skip()
 
 
 func test_full_run_reaches_terminal_state() -> void:

@@ -119,6 +119,14 @@ func _render_face(index: int, face: int, is_locked: bool) -> void:
 	_dice[index].basis = Basis()
 
 
+func flash_die(index: int, color: Color, duration: float) -> void:
+	if index < 0 or index >= _mats.size():
+		return
+	var t := create_tween()
+	t.tween_property(_mats[index], "albedo_color", color, duration * 0.5)
+	t.tween_property(_mats[index], "albedo_color", COLOR_LOCKED, duration * 0.5)
+
+
 func _set_texture(index: int, value: int) -> void:
 	if index >= 0 and index < _mats.size():
 		_mats[index].albedo_texture = _face_tex[clampi(value, 1, 6)]

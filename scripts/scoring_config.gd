@@ -27,6 +27,7 @@ enum ComboType { PAIR, TWO_PAIR, TRIPLE, SMALL_STRAIGHT, FULL_HOUSE, QUAD, LARGE
 @export var heat_min: float = 1.0
 @export var heat_max: float = 1.5
 @export var steady_heat: float = 1.25
+@export var cascade_duration_s: float = 0.8
 
 
 func get_chips(type: ComboType) -> int:

@@ -16,6 +16,7 @@ var _controller: ThrowController
 var _arc: AnteArc
 var _round: RoundState
 var _tumbler: DiceTumbler
+var _cascade: ScoreCascade
 var _countdown_left := -1.0
 var _focus_paused := false
 
@@ -153,6 +154,7 @@ func _try_lock_at(point: Vector2) -> void:
 
 func _on_throw_pressed() -> void:
 	_result.text = ""
+	_result.scale = Vector2.ONE  # reset in case previous cascade was interrupted
 	_throw_button.disabled = true
 	_controller.start_throw()
 	_tumbler.build(_controller.faces.size())
@@ -234,14 +236,25 @@ func _on_reroll_started(_rerolled_indices: Array[int]) -> void:
 func _on_resolved(result: ThrowResult) -> void:
 	_timer_bar.visible = false
 	_tumbler.reveal(_controller.faces, _controller.locked)
-	var breakdown := _scoring.score(result, _scoring_config, 0, _config.lock_window_duration_s, false)
-	_result.text = breakdown.describe()
-	_round.add_score(breakdown.final_score)
-	_update_round_labels()
+	var breakdown := _scoring.score(result, _scoring_config, _effective_window_s, false, RunCoordinator.inventory)
+	if not breakdown.combos.is_empty():
+		_screen_shake(8.0, 0.25)
+		if _sfx_combo != null and _sfx_combo.stream != null:
+			_sfx_combo.play()
+	var old_total := _round.total
+	var new_total := old_total + breakdown.final_score
+	_cascade = ScoreCascade.new(self, _tumbler, _result, _total_label, _scoring_config)
+	_cascade.finished.connect(_on_cascade_finished)
+	_cascade.play(breakdown, old_total, new_total, _round.target)
+
+
+func _on_cascade_finished() -> void:
+	_round.add_score(_cascade.final_score)
 	if _round.is_done:
-		return  # round_won or round_lost signal already handled button + status
+		return  # _on_round_won/lost → _on_ante_advanced/_on_run_* already updated labels + button
+	_update_round_labels()
 	var throws_left := _ante_config.throws_per_round - _round.current_throw
-	_status.text = "Score %d — %d throw(s) left" % [breakdown.final_score, throws_left]
+	_status.text = "Score %d — %d throw(s) left" % [_cascade.final_score, throws_left]
 	_throw_button.disabled = false
 
 

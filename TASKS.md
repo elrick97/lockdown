@@ -61,7 +61,7 @@
 
 ### Feel & presentation
 - [ ] First juice pass: score tick-up audio w/ rising pitch, lock haptics, combo screen shake
-- [ ] Number cascade animation on scoring
+- [x] Number cascade animation on scoring `add-score-cascade`
 - [ ] Art direction exploration: 3 style frames, pick one
 - [ ] UI layout pass: thumb-zone audit on-device
 - [ ] Placeholder → first-pass dice/charm art for slice content

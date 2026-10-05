@@ -35,9 +35,12 @@ func test_full_throw_resolves_on_screen() -> void:
 	await wait_until(func() -> bool:
 		return scene._controller.state == ThrowController.State.RESOLVED, 5.0)
 	assert_eq(scene._controller.state, ThrowController.State.RESOLVED, "throw resolved end-to-end")
+	# Skip cascade so game state updates synchronously in the test.
+	if scene._cascade != null:
+		scene._cascade.skip()
 	assert_ne(scene._result.text, "", "resolve readout displayed")
-	assert_true(scene._result.text.contains("="), "readout shows the score formula")
-	assert_false(scene._throw_button.disabled, "throw button re-enabled after resolve")
+	assert_true(scene._result.text.contains("pts"), "readout shows score after cascade")
+	assert_false(scene._throw_button.disabled, "throw button re-enabled after cascade")
 	# Score the same resolved throw directly and confirm a real, non-negative total.
 	var bd := ScoringEngine.new().score(
 		scene._controller.last_result, scene._scoring_config,
