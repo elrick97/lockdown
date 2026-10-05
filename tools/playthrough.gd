@@ -159,6 +159,14 @@ func _scenario_carving() -> void:
 		if &"wild" in activated:
 			var wild_i := r.carve_types.find(&"wild")
 			_check(_in_combos(b, wild_i), "Wild: the Wild die joins a combo (%s)" % b.describe())
+			var expected_pips := 0  # Bone only: combo dice at their combo value, loose dice at their face
+			for c in b.combos:
+				for f: int in c["faces"]:
+					expected_pips += f
+			for li in b.loose_indices:
+				expected_pips += r.faces[li]
+			_check(b.pips == expected_pips,
+				"Wild: pips use the substituted value (%d, printed face %d)" % [b.pips, r.faces[wild_i]])
 			await _screenshot("carving_wild_scored")
 		if &"gem" in activated:
 			await _screenshot("carving_gem_scored")

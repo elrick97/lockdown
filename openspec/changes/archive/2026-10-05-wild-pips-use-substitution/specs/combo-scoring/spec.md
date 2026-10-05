@@ -1,27 +1,4 @@
-# combo-scoring Specification
-
-## Purpose
-How a resolved throw is scored: combo detection with best-single-partition and the base chips/mult table.
-
-All base values below are named tunables on `ScoringConfig` (current values shown); the M0 playtest tunes them. `base_mult` = **1**.
-
-| Combo | Match | `chips` | `mult` |
-|---|---|---|---|
-| Pair | 2 of a kind | 10 | 1 |
-| Two Pair | two distinct pairs | 25 | 2 |
-| Triple | 3 of a kind | 30 | 2 |
-| Small Straight | 4-length run | 30 | 2 |
-| Full House | a triple + a pair | 50 | 3 |
-| Quad | 4 of a kind | 60 | 4 |
-| Large Straight | 1-2-3-4-5-6 | 80 | 5 |
-| Quint+ | 5+ of a kind | 100 | 8 |
-## Requirements
-### Requirement: Only locked dice score
-Scoring SHALL consider only the locked dice of a resolved throw. Since the throw force-locks at the end of window 3, in practice all tray dice score, but the engine SHALL key off lock state, not tray membership.
-
-#### Scenario: Loose die excluded
-- **WHEN** a throw resolves with a die that was never locked
-- **THEN** that die contributes neither pips nor combos to the score
+## MODIFIED Requirements
 
 ### Requirement: Score formula
 The score SHALL be `Score = (Pips + Bonus Chips + Charm Chips) × (Combo Mult + Charm Mult) × Heat`, where `Pips` is the sum of the pip values of all locked dice (the face adjusted by the die's material; a Wild die uses its substituted value, see the dice-materials and Wild requirements), `Bonus Chips` is the sum of `chips` across the combos in the chosen partition, `Charm Chips` is `ScoreBreakdown.charm_chips` accumulated by `on_score` hooks (default 0), `Combo Mult` is `max(base_mult, sum of mult across those combos)`, `Charm Mult` is `ScoreBreakdown.charm_mult` accumulated by `on_score` hooks (default 0.0), and `Heat` is supplied by the `heat` capability. The final score SHALL be floored to an integer. `ScoringEngine.score()` SHALL accept an optional `CharmInventory` parameter (default `null`); when provided, it calls each charm's `on_score(breakdown, ctx)` in slot order (0 → 4) before computing the final total.
@@ -49,49 +26,6 @@ The score SHALL be `Score = (Pips + Bonus Chips + Charm Chips) × (Combo Mult + 
 #### Scenario: Hooks fire in slot order
 - **WHEN** two charms are in slots 0 and 1, and charm 1's hook reads `breakdown.charm_chips` written by charm 0
 - **THEN** charm 1 sees the value charm 0 wrote (slot 0 fires before slot 1)
-
-### Requirement: Best-single-partition resolution
-Each locked die SHALL belong to at most one combo. The engine SHALL evaluate the valid partitions of the locked set and choose the one yielding the highest `Score` (PRD §3.3). Dice in no combo are loose (pips only).
-
-#### Scenario: Quad beats two pairs
-- **WHEN** the locked set is 4,4,4,4
-- **THEN** the chosen partition is a single Quad, not two Pairs or a Two Pair
-
-#### Scenario: Full House beats Triple + Pair
-- **WHEN** the locked set is 3,3,3,5,5
-- **THEN** the chosen partition is a single Full House, not a Triple plus a Pair
-
-#### Scenario: Large Straight beats Small Straight plus loose
-- **WHEN** the locked set is 1,2,3,4,5,6
-- **THEN** the chosen partition is a single Large Straight, not a Small Straight with two loose dice
-
-#### Scenario: Quint beats Quad plus loose
-- **WHEN** the locked set is 6,6,6,6,6
-- **THEN** the chosen partition is a single Quint, not a Quad with one loose die
-
-#### Scenario: Two genuine pairs partition as Two Pair
-- **WHEN** the locked set is 2,2,5,5
-- **THEN** the chosen partition is a single Two Pair combo (chips 25, mult 2), scoring higher than two separate Pairs
-
-### Requirement: Deterministic tie-break
-When two partitions yield an equal `Score`, the engine SHALL prefer the partition with fewer combos; if still tied, the partition whose highest-ranked combo outranks the other's (rank order: Quint > Large Straight > Quad > Full House > Small Straight > Triple > Two Pair > Pair). This guarantees a single, reproducible result.
-
-#### Scenario: Equal-score partitions resolve identically
-- **WHEN** two partitions of the same locked set produce identical scores
-- **THEN** the engine returns the same partition every time, selected by the tie-break order
-
-### Requirement: Gem carved dice add bonus chips on lock
-When a locked die shows its `carved_face` and its `carve_type == &"gem"`, the scoring engine SHALL add **20 chips** to `ScoreBreakdown.charm_chips` (named tunable: `gem_chips`, current value: **20**). This applies per qualifying die; multiple Gem dice stack.
-
-#### Scenario: Gem die locked on carved face
-- **GIVEN** a die with `carved_face = 5`, `carve_type = &"gem"` is drawn and locked showing face 5
-- **WHEN** the throw is scored
-- **THEN** `breakdown.charm_chips` is increased by 20
-
-#### Scenario: Gem die locked on non-carved face
-- **GIVEN** the same Gem die is locked showing face 3 (not its carved face 5)
-- **WHEN** the throw is scored
-- **THEN** no bonus chips are added for that die
 
 ### Requirement: Wild carved dice use best-substitution combo detection
 When one or more locked dice have `carve_type == &"wild"`, the engine SHALL try all possible face value substitutions (1–6) for each wild slot and choose the substitution that yields the highest-scoring partition. A Wild die SHALL score as its substituted value everywhere in the score: in combo detection, in the breakdown, and in `Pips` (with its material's `pip_offset` and `pip_multiplier` applied, floored at 0). Because pips depend on the substitution, candidates are compared on the full `(Pips + Bonus Chips) × Combo Mult` key, so among equal combos the higher-pip substitution wins. Charms keep reading printed faces (decision deferred, 2026-10-05).
@@ -124,4 +58,3 @@ The search is bounded at **N ≤ 2** wild dice in the M1 tray cap of 8, producin
 - **THEN** that die contributes `(6 + (−1)) × 1` = 5 pips
 
 *(Note: `carve_activated` is emitted for Wild dice at lock time but the ThrowScene handler ignores `&"wild"`. The Gem and Spark bonus effects are handled in the score phase and ThrowScene respectively.)*
-

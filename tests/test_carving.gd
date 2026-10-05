@@ -180,3 +180,40 @@ func test_freeze_window_positive_adds_time() -> void:
 	ctrl.freeze_window(0.5)  # Spark: positive → subtracts from _accumulated → more time
 	var after := ctrl.time_remaining()
 	assert_gt(after, before, "freeze_window(0.5) grants 0.5 s extra to the window")
+
+
+# --- Wild pips use the substituted value (wild-pips-use-substitution) --------
+
+func _wild_result(faces: Array, wild_slots: Array, offsets: Array = [], mults: Array = []) -> ThrowResult:
+	var carves: Array[StringName] = []
+	for i in faces.size():
+		carves.append(&"wild" if i in wild_slots else &"")
+	var r := _result_with_carve(faces, carves)
+	for v in offsets:
+		r.pip_offsets.append(int(v))
+	for v in mults:
+		r.pip_multipliers.append(int(v))
+	return r
+
+
+func test_wild_pips_use_substituted_value() -> void:
+	var bd := _engine.score(_wild_result([6, 6, 1, 2, 2], [2]), _config, WINDOW_S)
+	assert_eq(bd.combos[0].name, "Full House")
+	assert_eq(bd.pips, 22, "Wild counts as the 6 it stands for, not its printed 1")
+	assert_eq(bd.final_score, 216, "(22 + 50) × 3 at Heat ×1.0")
+
+
+func test_wild_printed_face_no_longer_counts() -> void:
+	var bd := _engine.score(_wild_result([4, 4, 5, 1, 1, 6], [2]), _config, WINDOW_S)
+	assert_eq(bd.combos[0].name, "Full House")
+	assert_eq(bd.pips, 20, "Wild as a 4: 4+4+4+1+1+6, the printed 5 is gone")
+	assert_eq(bd.final_score, 210, "(20 + 50) × 3 at Heat ×1.0 (was 213)")
+
+
+func test_wild_pips_apply_material() -> void:
+	# Slot 2 is the Wild; it completes three 6s.
+	var iron := _engine.score(_wild_result([6, 6, 1, 2, 3], [2], [0, 0, -1, 0, 0], [1, 1, 1, 1, 1]), _config, WINDOW_S)
+	assert_eq(iron.pips, 6 + 6 + 5 + 2 + 3, "Iron Wild as a 6 adds (6 − 1) = 5")
+	var glass := _engine.score(_wild_result([6, 6, 1, 2, 3], [2], [0, 0, 0, 0, 0], [1, 1, 2, 1, 1]), _config, WINDOW_S)
+	assert_eq(glass.pips, 6 + 6 + 12 + 2 + 3, "Glass Wild as a 6 adds 6 × 2 = 12")
+

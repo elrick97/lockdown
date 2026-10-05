@@ -21,12 +21,7 @@ func score(result: ThrowResult, config: ScoringConfig,
 		locked.append({"idx": int(idx), "face": int(result.faces[idx])})
 
 	var counts := _counts_of(locked)
-	var pips := 0
-	for d in locked:
-		var idx: int = d.idx
-		var offset: int = result.pip_offsets[idx] if idx < result.pip_offsets.size() else 0
-		var mult: int = result.pip_multipliers[idx] if idx < result.pip_multipliers.size() else 1
-		pips += maxi(0, d.face + offset) * mult
+	var pips := _pips_of(locked, result)
 
 	# Carved face effects: collect Gem bonus chips and Wild slots.
 	var gem_chips := 0
@@ -42,15 +37,16 @@ func score(result: ThrowResult, config: ScoringConfig,
 
 	var chosen: Array
 	# Dice as the combos see them: Wild slots carry their substituted value, so the
-	# breakdown can assign a Wild to the combo it completes. Pips stay on real faces.
+	# breakdown can assign a Wild to the combo it completes.
 	var combo_locked := locked
 	if wild_locked_slots.is_empty():
 		var candidates := _candidates(counts)
 		chosen = _search(candidates, 0, counts, [], pips, config)
 	else:
-		var wild_best := _best_wild_combos(locked, wild_locked_slots, pips, config)
+		var wild_best := _best_wild_combos(locked, wild_locked_slots, result, config)
 		chosen = wild_best[0]
 		combo_locked = wild_best[1]
+		pips = wild_best[2]  # a Wild's pips use its substituted value
 
 	var heat := Heat.steady(config) if steady else Heat.from_remaining(
 		result.window_remaining_s, config, window_duration)
@@ -71,6 +67,18 @@ func score(result: ThrowResult, config: ScoringConfig,
 
 
 # --- candidate generation ---------------------------------------------------
+
+## Pips of the dice as scored: each face adjusted by its material (dice-materials
+## spec), floored at 0. Wild dice arrive here already carrying their substitute.
+func _pips_of(dice: Array, result: ThrowResult) -> int:
+	var pips := 0
+	for d in dice:
+		var idx: int = d.idx
+		var offset: int = result.pip_offsets[idx] if idx < result.pip_offsets.size() else 0
+		var mult: int = result.pip_multipliers[idx] if idx < result.pip_multipliers.size() else 1
+		pips += maxi(0, d.face + offset) * mult
+	return pips
+
 
 func _counts_of(locked: Array) -> Array:
 	var counts := [0, 0, 0, 0, 0, 0, 0]  # index 1..6
@@ -224,11 +232,12 @@ func _build_breakdown(chosen: Array, locked: Array, pips: int,
 # --- Wild carving: try every face substitution, keep the best combo set ------
 
 ## Tries all 6^N substitutions for N wild slots and returns
-## [chosen combos, locked dice with the winning substitution applied]. The second
-## element is what the breakdown must assign dice from: a Wild's substituted value
-## need not match any face actually showing. N ≤ 2 in M1 (max 36 calls).
+## [chosen combos, locked dice with the winning substitution applied, their pips].
+## The breakdown assigns dice from the second element (a Wild's substituted value
+## need not match any face showing). Each candidate is ranked with its own pips,
+## so the search maximizes the full score. N ≤ 2 in M1 (max 36 calls).
 func _best_wild_combos(locked: Array, wild_locked_slots: Array[int],
-		pips: int, config: ScoringConfig) -> Array:
+		result: ThrowResult, config: ScoringConfig) -> Array:
 	# Build the combination list: each entry is an Array[int] of face values
 	# to substitute for each wild slot (in wild_locked_slots order).
 	var combos: Array = [[]]
@@ -243,20 +252,23 @@ func _best_wild_combos(locked: Array, wild_locked_slots: Array[int],
 
 	var best: Array = []
 	var best_locked := locked
-	var best_eval := _eval([], pips, config)
+	var best_pips := _pips_of(locked, result)
+	var best_eval := _eval([], best_pips, config)
 
 	for face_vals in combos:
 		var mod_locked := locked.duplicate()
 		for s in wild_locked_slots.size():
 			var j: int = wild_locked_slots[s]
 			mod_locked[j] = {"idx": locked[j].idx, "face": face_vals[s]}
+		var mod_pips := _pips_of(mod_locked, result)
 		var mod_counts := _counts_of(mod_locked)
 		var mod_cands := _candidates(mod_counts)
-		var mod_chosen := _search(mod_cands, 0, mod_counts, [], pips, config)
-		var mod_eval := _eval(mod_chosen, pips, config)
+		var mod_chosen := _search(mod_cands, 0, mod_counts, [], mod_pips, config)
+		var mod_eval := _eval(mod_chosen, mod_pips, config)
 		if _better(mod_eval, best_eval):
 			best = mod_chosen
 			best_locked = mod_locked
+			best_pips = mod_pips
 			best_eval = mod_eval
 
-	return [best, best_locked]
+	return [best, best_locked, best_pips]
