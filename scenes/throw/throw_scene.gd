@@ -233,6 +233,23 @@ func _on_reroll_started(_rerolled_indices: Array[int]) -> void:
 	_status.text = "Re-rolling…"
 
 
+func _on_carve_activated(_die_index: int, carve_type: StringName) -> void:
+	if carve_type == &"spark":
+		_controller.freeze_window(0.5)
+
+
+func _screen_shake(amplitude: float, duration: float) -> void:
+	var tween := create_tween()
+	var steps := 6
+	for i in steps:
+		var t := duration / steps
+		var sign := 1.0 if i % 2 == 0 else -1.0
+		var decay := 1.0 - float(i) / steps
+		tween.tween_property(self, "position",
+			Vector2(sign * amplitude * decay, 0.0), t * 0.5)
+		tween.tween_property(self, "position", Vector2.ZERO, t * 0.5)
+
+
 func _on_resolved(result: ThrowResult) -> void:
 	_timer_bar.visible = false
 	_tumbler.reveal(_controller.faces, _controller.locked)

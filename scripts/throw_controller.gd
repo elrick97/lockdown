@@ -11,6 +11,7 @@ extends RefCounted
 signal window_started(window_index: int)
 signal die_locked(die_index: int, window_index: int)
 signal reroll_started(rerolled_indices: Array[int])
+signal carve_activated(die_index: int, carve_type: StringName)
 signal resolved(result: ThrowResult)
 
 enum State { IDLE, TUMBLE, LOCK_WINDOW, REROLL, RESOLVED }

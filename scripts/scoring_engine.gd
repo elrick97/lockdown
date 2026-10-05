@@ -214,3 +214,40 @@ func _build_breakdown(chosen: Array, locked: Array, pips: int,
 	bd.combo_mult = maxi(config.base_mult, total_mult)
 	# final_score is computed in score() after charm on_score hooks fire.
 	return bd
+
+
+# --- Wild carving: try every face substitution, keep the best combo set ------
+
+## Tries all 6^N substitutions for N wild slots and returns the chosen combo
+## array that yields the highest scored combo value. N ≤ 2 in M1 (max 36 calls).
+func _best_wild_combos(locked: Array, wild_locked_slots: Array[int],
+		pips: int, config: ScoringConfig) -> Array:
+	# Build the combination list: each entry is an Array[int] of face values
+	# to substitute for each wild slot (in wild_locked_slots order).
+	var combos: Array = [[]]
+	for _i in wild_locked_slots.size():
+		var expanded: Array = []
+		for combo in combos:
+			for v in range(1, 7):
+				var nc: Array = combo.duplicate()
+				nc.append(v)
+				expanded.append(nc)
+		combos = expanded
+
+	var best: Array = []
+	var best_eval := _eval([], pips, config)
+
+	for face_vals in combos:
+		var mod_locked := locked.duplicate()
+		for s in wild_locked_slots.size():
+			var j: int = wild_locked_slots[s]
+			mod_locked[j] = {"idx": locked[j].idx, "face": face_vals[s]}
+		var mod_counts := _counts_of(mod_locked)
+		var mod_cands := _candidates(mod_counts)
+		var mod_chosen := _search(mod_cands, 0, mod_counts, [], pips, config)
+		var mod_eval := _eval(mod_chosen, pips, config)
+		if _better(mod_eval, best_eval):
+			best = mod_chosen
+			best_eval = mod_eval
+
+	return best

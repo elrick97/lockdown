@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CarvedDieOffer" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/carved_die_offer.gd" id="1_carve"]
+
+[resource]
+script = ExtResource("1_carve")
+display_name = "Gem 5 (Bone)"
+description = "Adds a die whose 5 gives +20 Chips when locked."
+cost = 4
+material_id = &"standard"
+carved_face = 5
+carve_type = &"gem"
