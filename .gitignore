@@ -17,3 +17,6 @@ build/
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# Blender backup saves
+*.blend1

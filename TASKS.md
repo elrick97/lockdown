@@ -62,7 +62,7 @@
 ### Feel & presentation
 - [ ] First juice pass: score tick-up audio w/ rising pitch, lock haptics, combo screen shake
 - [x] Number cascade animation on scoring `add-score-cascade`
-- [ ] Art direction exploration: 3 style frames, pick one
+- [x] Art direction exploration: 3 style frames, pick one `add-art-direction` *(picked B "Smoke Room", logged in PRD §5)*
 - [ ] UI layout pass: thumb-zone audit on-device
 - [ ] Placeholder → first-pass dice/charm art for slice content
 
