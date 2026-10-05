@@ -27,8 +27,8 @@ func _result(faces: Array, times: Array = [0.0, 0.0, 0.0]) -> ThrowResult:
 	return r
 
 
-func _score(faces: Array, charm_mult: int = 0) -> ScoreBreakdown:
-	return _engine.score(_result(faces), _config, charm_mult, WINDOW, false)
+func _score(faces: Array) -> ScoreBreakdown:
+	return _engine.score(_result(faces), _config, WINDOW, false)
 
 
 # --- formula ---------------------------------------------------------------
@@ -47,11 +47,6 @@ func test_loose_dice_contribute_pips() -> void:
 	assert_eq(bd.combo_mult, 1)
 	assert_eq(bd.final_score, 20, "(10 + 10) x 1 x 1.0")
 	assert_eq(bd.loose_indices, [2] as Array[int], "the unmatched die is loose")
-
-
-func test_charm_mult_seam() -> void:
-	var bd := _score([4, 4], 2)
-	assert_eq(bd.final_score, 54, "(8 + 10) x (1 + 2) x 1.0")
 
 
 # --- partition edge cases --------------------------------------------------
@@ -104,7 +99,7 @@ func test_unlocked_die_does_not_score() -> void:
 	# Three 4s present, but only two were locked → scores as a Pair, not a Triple.
 	var r := _result([4, 4, 4])
 	r.locked_order = [0, 1]  # die 2 left unlocked
-	var bd := _engine.score(r, _config, 0, WINDOW, false)
+	var bd := _engine.score(r, _config, WINDOW, false)
 	assert_eq(bd.pips, 8, "only the two locked 4s count")
 	assert_eq(bd.combos.size(), 1)
 	assert_eq(bd.combos[0].name, "Pair")
@@ -113,7 +108,7 @@ func test_unlocked_die_does_not_score() -> void:
 func test_heat_applies_to_final() -> void:
 	# Full-speed throw: all windows credited → x1.5 Heat.
 	var r := _result([4, 4], [WINDOW, WINDOW, WINDOW])
-	var bd := _engine.score(r, _config, 0, WINDOW, false)
+	var bd := _engine.score(r, _config, WINDOW, false)
 	assert_almost_eq(bd.heat, 1.5, 0.0001)
 	assert_eq(bd.final_score, 27, "(8 + 10) x 1 x 1.5 = 27")
 

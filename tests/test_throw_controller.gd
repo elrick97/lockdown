@@ -140,6 +140,82 @@ func test_scripted_throw_is_deterministic() -> void:
 	assert_ne(a.faces, c.faces, "different seed should diverge")
 
 
+# ── charm hook tests ─────────────────────────────────────────────────────────
+
+class RecordingCharm extends CharmEffect:
+	var throw_calls: int = 0
+	var window_calls: Array[int] = []
+	var lock_calls: Array = []
+	func on_throw(_ctx: CharmContext) -> void:
+		throw_calls += 1
+	func on_window(window_index: int, _ctx: CharmContext) -> void:
+		window_calls.append(window_index)
+	func on_lock(die_index: int, face: int, window_index: int, _ctx: CharmContext) -> void:
+		lock_calls.append({"die": die_index, "face": face, "window": window_index})
+
+
+func _controller_with_charm(charm: CharmEffect) -> ThrowController:
+	var inv := CharmInventory.new()
+	inv.add_charm(charm)
+	return ThrowController.new(_config, DiceBag.new(_config.starting_bag_size), RngCore.new(42), inv)
+
+
+func test_on_throw_fires_at_start() -> void:
+	var charm := RecordingCharm.new()
+	var ctrl := _controller_with_charm(charm)
+	ctrl.start_throw()
+	assert_eq(charm.throw_calls, 1, "on_throw fires once per throw")
+	var dt := 1.0 / 60.0
+	for _i in 10000:
+		if ctrl.state == ThrowController.State.RESOLVED:
+			break
+		ctrl.tick(dt)
+	ctrl.start_throw()
+	assert_eq(charm.throw_calls, 2, "on_throw fires again on the second throw")
+
+
+func test_on_window_fires_for_each_window() -> void:
+	var charm := RecordingCharm.new()
+	var ctrl := _controller_with_charm(charm)
+	ctrl.start_throw()
+	var dt := 1.0 / 60.0
+	for _i in 10000:
+		if ctrl.state == ThrowController.State.RESOLVED:
+			break
+		ctrl.tick(dt)
+	assert_eq(charm.window_calls, [1, 2, 3] as Array[int],
+		"on_window fires for all three windows in order")
+
+
+func test_on_lock_fires_on_manual_lock() -> void:
+	var charm := RecordingCharm.new()
+	var ctrl := _controller_with_charm(charm)
+	ctrl.start_throw()
+	var dt := 1.0 / 60.0
+	while ctrl.state != ThrowController.State.LOCK_WINDOW:
+		ctrl.tick(dt)
+	var face0: int = ctrl.faces[0]
+	ctrl.lock_die(0)
+	assert_eq(charm.lock_calls.size(), 1, "on_lock fires once per lock_die()")
+	assert_eq(charm.lock_calls[0].die, 0)
+	assert_eq(charm.lock_calls[0].face, face0)
+	assert_eq(charm.lock_calls[0].window, 1)
+
+
+func test_on_lock_fires_for_force_locked_dice() -> void:
+	var charm := RecordingCharm.new()
+	var ctrl := _controller_with_charm(charm)
+	ctrl.start_throw()
+	var dt := 1.0 / 60.0
+	for _i in 10000:
+		if ctrl.state == ThrowController.State.RESOLVED:
+			break
+		ctrl.tick(dt)
+	assert_eq(charm.lock_calls.size(), 6, "on_lock fires for each force-locked die")
+	for entry in charm.lock_calls:
+		assert_eq(entry.window, 3, "force-locks attributed to window 3")
+
+
 func _scripted_run(seed_value: int) -> ThrowResult:
 	var cfg := ThrowConfig.new()
 	var controller := ThrowController.new(cfg, DiceBag.new(cfg.starting_bag_size), RngCore.new(seed_value))

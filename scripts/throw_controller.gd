@@ -25,18 +25,23 @@ var locked: Array[bool] = []
 var last_result: ThrowResult = null
 
 var _lock_sequence: Array[int] = []
+## Window (1-3) in which each entry of _lock_sequence was locked. Parallel array.
+var _lock_windows: Array[int] = []
 var _window_remaining: Array[float] = [0.0, 0.0, 0.0]
 var _accumulated: float = 0.0
 var _drawn: Array[StringName] = []
 var _config: ThrowConfig
 var _bag: DiceBag
 var _rng: RngCore
+var _inventory: CharmInventory = null
 
 
-func _init(config: ThrowConfig, bag: DiceBag, rng: RngCore) -> void:
+func _init(config: ThrowConfig, bag: DiceBag, rng: RngCore,
+		inventory: CharmInventory = null) -> void:
 	_config = config
 	_bag = bag
 	_rng = rng
+	_inventory = inventory
 
 
 func start_throw() -> void:
@@ -45,6 +50,8 @@ func start_throw() -> void:
 	faces.clear()
 	locked.clear()
 	_lock_sequence.clear()
+	_lock_windows.clear()
+	_shattered.clear()
 	_window_remaining = [0.0, 0.0, 0.0]
 	for i in _drawn.size():
 		faces.append(_roll_face())
@@ -52,6 +59,10 @@ func start_throw() -> void:
 	_accumulated = 0.0
 	window_index = 0
 	state = State.TUMBLE
+	if _inventory != null:
+		var ctx := CharmContext.for_throw(faces, locked)
+		for charm in _inventory.iter_charms():
+			charm.on_throw(ctx)
 
 
 func tick(delta: float) -> void:
@@ -78,7 +89,16 @@ func lock_die(index: int) -> bool:
 		return false
 	locked[index] = true
 	_lock_sequence.append(index)
+	_lock_windows.append(window_index)
 	die_locked.emit(index, window_index)
+	if index < _drawn.size():
+		var _d := _drawn[index]
+		if _d.carved_face == faces[index] and _d.carve_type != &"":
+			carve_activated.emit(index, _d.carve_type)
+	if _inventory != null:
+		var ctx := CharmContext.for_lock(index, window_index, faces, locked, _lock_wins_by_slot())
+		for charm in _inventory.iter_charms():
+			charm.on_lock(index, faces[index], window_index, ctx)
 	if not locked.has(false):
 		_end_window_all_locked()
 	return true
@@ -102,6 +122,10 @@ func _start_window(index: int) -> void:
 	_accumulated = 0.0
 	state = State.LOCK_WINDOW
 	window_started.emit(index)
+	if _inventory != null:
+		var ctx := CharmContext.for_window(index, faces, locked, _lock_wins_by_slot(), _window_remaining)
+		for charm in _inventory.iter_charms():
+			charm.on_window(index, ctx)
 
 
 func _end_window_by_expiry() -> void:
@@ -133,10 +157,20 @@ func _begin_reroll() -> void:
 
 func _force_lock_remaining() -> void:
 	for i in locked.size():
-		if not locked[i]:
-			locked[i] = true
-			_lock_sequence.append(i)
-			die_locked.emit(i, window_index)
+		if locked[i] or _shattered[i]:
+			continue
+		locked[i] = true
+		_lock_sequence.append(i)
+		_lock_windows.append(window_index)
+		die_locked.emit(i, window_index)
+		if i < _drawn.size():
+			var _d := _drawn[i]
+			if _d.carved_face == faces[i] and _d.carve_type != &"":
+				carve_activated.emit(i, _d.carve_type)
+		if _inventory != null:
+			var ctx := CharmContext.for_lock(i, window_index, faces, locked, _lock_wins_by_slot())
+			for charm in _inventory.iter_charms():
+				charm.on_lock(i, faces[i], window_index, ctx)
 
 
 func _resolve() -> void:
@@ -146,6 +180,7 @@ func _resolve() -> void:
 	var result := ThrowResult.new()
 	result.faces = faces.duplicate()
 	result.locked_order = _lock_sequence.duplicate()
+	result.lock_windows = _lock_windows.duplicate()
 	result.window_remaining_s = _window_remaining.duplicate()
 	last_result = result
 	resolved.emit(result)
@@ -153,3 +188,54 @@ func _resolve() -> void:
 
 func _roll_face() -> int:
 	return _rng.randi_range(RngCore.STREAM_DICE, 1, 6)
+
+
+## Slot-indexed array: slot → window it was locked in (0 = not yet locked).
+func _lock_wins_by_slot() -> Array[int]:
+	var arr: Array[int] = []
+	arr.resize(faces.size())
+	arr.fill(0)
+	for i in _lock_sequence.size():
+		arr[_lock_sequence[i]] = _lock_windows[i]
+	return arr
+
+
+## Trinket: Re-Tumble — re-rolls all currently unlocked, non-shattered dice
+## without changing state. Only callable during LOCK_WINDOW.
+func force_reroll_unlocked() -> void:
+	if state != State.LOCK_WINDOW:
+		return
+	var rerolled: Array[int] = []
+	for i in faces.size():
+		if not locked[i] and not _shattered[i]:
+			faces[i] = _roll_face()
+			rerolled.append(i)
+	if not rerolled.is_empty():
+		reroll_started.emit(rerolled)
+
+
+## Trinket: Freeze Timer — extends the current window by subtracting duration
+## from _accumulated. Only callable during LOCK_WINDOW.
+func freeze_window(duration: float) -> void:
+	if state != State.LOCK_WINDOW:
+		return
+	_accumulated = maxf(0.0, _accumulated - duration)
+
+
+func get_drawn_materials() -> Array[StringName]:
+	var mats: Array[StringName] = []
+	for d in _drawn:
+		mats.append(d.material_id)
+	return mats
+
+
+func _material_res(name: StringName) -> DiceMaterial:
+	if _material_cache.has(name):
+		return _material_cache[name] as DiceMaterial
+	var path := "res://resources/dice_materials/%s.tres" % name
+	if ResourceLoader.exists(path):
+		var res := load(path) as DiceMaterial
+		_material_cache[name] = res
+		return res
+	_material_cache[name] = null
+	return null

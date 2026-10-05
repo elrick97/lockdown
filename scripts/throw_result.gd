@@ -6,6 +6,8 @@ extends RefCounted
 var faces: Array[int] = []
 ## Die indices in the order they were locked (force-locks last, index order).
 var locked_order: Array[int] = []
+## Window (1-3) in which each die in locked_order was locked. Parallel array.
+var lock_windows: Array[int] = []
 ## Remaining time per window at the moment it ended; skipped windows are
 ## credited at full duration. Raw input for Heat.
 var window_remaining_s: Array[float] = [0.0, 0.0, 0.0]

@@ -11,7 +11,9 @@ var loose_indices: Array[int] = []
 var pips: int = 0
 var bonus_chips: int = 0
 var combo_mult: int = 0
-var charm_mult: int = 0
+## Written by charm on_score hooks before final_score is computed.
+var charm_chips: int = 0
+var charm_mult: float = 0.0
 var heat: float = 1.0
 var final_score: int = 0
 
@@ -21,6 +23,6 @@ func describe() -> String:
 	for c in combos:
 		parts.append("%s %s" % [c.name, str(c.faces)])
 	var combo_text := "—" if parts.is_empty() else ", ".join(parts)
-	return "%s\n(%d + %d) x (%d + %d) x %.2f = %d" % [
-		combo_text, pips, bonus_chips, combo_mult, charm_mult, heat, final_score
+	return "%s\n(%d + %d + %d) x (%d + %.1f) x %.2f = %d" % [
+		combo_text, pips, bonus_chips, charm_chips, combo_mult, charm_mult, heat, final_score
 	]

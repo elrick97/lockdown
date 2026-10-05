@@ -41,7 +41,7 @@ func test_full_throw_resolves_on_screen() -> void:
 	# Score the same resolved throw directly and confirm a real, non-negative total.
 	var bd := ScoringEngine.new().score(
 		scene._controller.last_result, scene._scoring_config,
-		0, scene._config.lock_window_duration_s, false)
+		scene._config.lock_window_duration_s, false)
 	assert_gt(bd.final_score, 0, "a resolved throw produces a positive score")
 	# Status after resolve is either "Score X — N throw(s) left" (mid-round) or
 	# a round-end/ante message depending on whether the target was hit.

@@ -8,11 +8,12 @@ extends RefCounted
 const _COMBO := ScoringConfig.ComboType
 
 
-## Scores a resolved throw. charm_mult is the (M0: zero) charm contribution;
-## window_duration feeds the Heat curve; steady selects the fixed Heat seam.
-func score(result: ThrowResult, config: ScoringConfig, charm_mult: int,
-		window_duration: float, steady: bool = false) -> ScoreBreakdown:
-	# Only locked dice score (combo-scoring spec).
+## Scores a resolved throw. window_duration feeds the Heat curve; steady
+## selects the fixed Heat seam; inventory provides charm on_score hooks.
+func score(result: ThrowResult, config: ScoringConfig,
+		window_duration: float, steady: bool = false,
+		inventory: CharmInventory = null) -> ScoreBreakdown:
+	# Only locked, non-shattered dice score (combo-scoring + dice-materials spec).
 	var locked: Array = []
 	for idx in result.locked_order:
 		locked.append({"idx": int(idx), "face": int(result.faces[idx])})
@@ -28,7 +29,19 @@ func score(result: ThrowResult, config: ScoringConfig, charm_mult: int,
 	var heat := Heat.steady(config) if steady else Heat.from_remaining(
 		result.window_remaining_s, config, window_duration)
 
-	return _build_breakdown(chosen, locked, pips, charm_mult, heat, config)
+	var bd := _build_breakdown(chosen, locked, pips, heat, config)
+	bd.charm_chips += gem_chips
+
+	# Fire charm on_score hooks in slot order before computing final total.
+	if inventory != null:
+		var ctx := CharmContext.from_result(result)
+		for charm in inventory.iter_charms():
+			charm.on_score(bd, ctx)
+
+	bd.final_score = floori(
+		float(bd.pips + bd.bonus_chips + bd.charm_chips)
+		* (bd.combo_mult + bd.charm_mult) * bd.heat)
+	return bd
 
 
 # --- candidate generation ---------------------------------------------------
@@ -138,7 +151,7 @@ func _better(a: Dictionary, b: Dictionary) -> bool:
 
 # --- breakdown assembly -----------------------------------------------------
 
-func _build_breakdown(chosen: Array, locked: Array, pips: int, charm_mult: int,
+func _build_breakdown(chosen: Array, locked: Array, pips: int,
 		heat: float, config: ScoringConfig) -> ScoreBreakdown:
 	var used: Array[bool] = []
 	used.resize(locked.size())
@@ -146,7 +159,6 @@ func _build_breakdown(chosen: Array, locked: Array, pips: int, charm_mult: int,
 
 	var bd := ScoreBreakdown.new()
 	bd.pips = pips
-	bd.charm_mult = charm_mult
 	bd.heat = heat
 
 	var total_mult := 0
@@ -179,5 +191,5 @@ func _build_breakdown(chosen: Array, locked: Array, pips: int, charm_mult: int,
 			bd.loose_indices.append(locked[j].idx)
 
 	bd.combo_mult = maxi(config.base_mult, total_mult)
-	bd.final_score = floori(float(pips + bd.bonus_chips) * (bd.combo_mult + charm_mult) * heat)
+	# final_score is computed in score() after charm on_score hooks fire.
 	return bd
