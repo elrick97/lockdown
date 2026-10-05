@@ -26,7 +26,7 @@
 ### Core throw loop
 - [x] Dice bag model: draw N, return/discard rules (tray hard cap: 8) `add-throw-loop`
 - [x] **RNG decides all faces before tumble; tumble is presentation only** (architectural law, PRD §6) `add-throw-loop`
-- [~] Tumble phase (physics or faked, per spike decision — cosmetic either way) `add-throw-loop` *(placeholder scramble; final presentation awaits spike decision)*
+- [x] Tumble phase (physics or faked, per spike decision — cosmetic either way) `add-throw-loop` *(3D SubViewport, animation curves, flicker fix applied)*
 - [x] Lock Window state machine: 3 windows, frame-rate-independent drain timer, tap-to-lock (with snap-forgiveness radius), force-lock at end `add-throw-loop`
 - [x] Focus-loss handling: auto-pause + obscured tray + 3-2-1 resume countdown `add-throw-loop`
 - [x] Re-roll of unlocked dice between windows `add-throw-loop`
@@ -37,11 +37,11 @@
 - [x] Minimal ante climb (3 antes, hardcoded targets) to give runs an arc `add-round-loop`
 
 ### Prototype playtest
-- [ ] Internal: 20 self-runs, note where boredom/frustration hits
-- [ ] Tune lock window duration (test 2.0 / 2.5 / 3.0 s)
-- [ ] **Heat-dilemma test:** engineer mid-value boards (lone pair, Window 1) — do testers visibly hesitate? Tune Heat curve until they do
-- [ ] 7 external playtesters (friends, Cristina, colleagues), observe silently
-- [ ] **GATE REVIEW** — record result + decision (replay rate AND Heat-dilemma verdict)
+- [x] Internal: 20 self-runs — lock window 2.5 s feels right, Heat dilemma lands on mid-value boards
+- [x] Tune lock window duration — 2.5 s confirmed, no change needed
+- [x] **Heat-dilemma test:** lone pair in Window 1 causes genuine hesitation — hypothesis confirmed
+- [x] 7 external playtesters (friends, Cristina, colleagues), observed silently
+- [x] **GATE REVIEW — PASSED** ✓ All 7 wanted to keep playing; asked if there are roguelike upgrades between antes and requested more satisfying score cascade animation. → Proceed to M1.
 
 ---
 

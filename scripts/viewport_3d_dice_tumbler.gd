@@ -6,7 +6,7 @@ extends DiceTumbler
 ## are already decided by the RNG (dice-tumble spec).
 
 const VIEW_RES := Vector2i(560, 620)  # SubViewport render resolution (recorded for the perf comparison)
-const SCRAMBLE_UNTIL := 0.82
+const SCRAMBLE_UNTIL := 0.50
 const SPACING := 1.55
 const CUBE := 0.95
 
@@ -111,10 +111,11 @@ func _render_tumbling(progress: float) -> void:
 		_dice[i].basis = Basis(_spin_axis[i], angle)
 
 
-func _render_face(index: int, face: int, _is_locked: bool) -> void:
+func _render_face(index: int, face: int, is_locked: bool) -> void:
 	if index < 0 or index >= _dice.size():
 		return
 	_set_texture(index, face)
+	_mats[index].albedo_color = COLOR_LOCKED if is_locked else Color.WHITE
 	_dice[index].basis = Basis()
 
 
