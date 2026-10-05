@@ -16,15 +16,36 @@ func score(result: ThrowResult, config: ScoringConfig,
 	# Only locked, non-shattered dice score (combo-scoring + dice-materials spec).
 	var locked: Array = []
 	for idx in result.locked_order:
+		if result.shattered.size() > idx and result.shattered[idx]:
+			continue
 		locked.append({"idx": int(idx), "face": int(result.faces[idx])})
 
 	var counts := _counts_of(locked)
 	var pips := 0
 	for d in locked:
-		pips += d.face
+		var idx: int = d.idx
+		var offset: int = result.pip_offsets[idx] if idx < result.pip_offsets.size() else 0
+		var mult: int = result.pip_multipliers[idx] if idx < result.pip_multipliers.size() else 1
+		pips += maxi(0, d.face + offset) * mult
 
-	var candidates := _candidates(counts)
-	var chosen := _search(candidates, 0, counts, [], pips, config)
+	# Carved face effects: collect Gem bonus chips and Wild slots.
+	var gem_chips := 0
+	var wild_locked_slots: Array[int] = []
+	for j in locked.size():
+		var die_idx: int = locked[j].idx
+		var carve: StringName = result.carve_types[die_idx] \
+			if die_idx < result.carve_types.size() else &""
+		if carve == &"gem":
+			gem_chips += 20
+		elif carve == &"wild":
+			wild_locked_slots.append(j)
+
+	var chosen: Array
+	if wild_locked_slots.is_empty():
+		var candidates := _candidates(counts)
+		chosen = _search(candidates, 0, counts, [], pips, config)
+	else:
+		chosen = _best_wild_combos(locked, wild_locked_slots, pips, config)
 
 	var heat := Heat.steady(config) if steady else Heat.from_remaining(
 		result.window_remaining_s, config, window_duration)

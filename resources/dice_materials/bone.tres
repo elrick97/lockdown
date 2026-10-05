@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="DiceMaterial" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/dice_material.gd" id="1_bone"]
+
+[resource]
+script = ExtResource("1_bone")
+material_id = &"standard"
+display_name = "Bone"
+description = "Standard die. No special properties."
+pip_offset = 0
+pip_multiplier = 1
+shatter_on_reroll = false
+tumble_duration_factor = 1.0
+cost = 0

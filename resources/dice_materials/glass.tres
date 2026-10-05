@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="DiceMaterial" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/dice_material.gd" id="1_glass"]
+
+[resource]
+script = ExtResource("1_glass")
+material_id = &"glass"
+display_name = "Glass"
+description = "Scores x2 Pips, but shatters if re-rolled. Lock it in Window 1 or lose it."
+pip_offset = 0
+pip_multiplier = 2
+shatter_on_reroll = true
+tumble_duration_factor = 1.0
+cost = 6

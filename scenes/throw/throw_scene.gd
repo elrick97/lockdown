@@ -158,7 +158,7 @@ func _on_throw_pressed() -> void:
 	_throw_button.disabled = true
 	_controller.start_throw()
 	_tumbler.build(_controller.faces.size())
-	_tumbler.begin_tumble(_controller.faces, _controller.locked, _config.tumble_duration_s)
+	_tumbler.begin_tumble(_controller.faces, _controller.locked, _tumble_duration_s())
 	_status.text = "Tumbling…"
 
 
@@ -229,7 +229,7 @@ func _on_die_locked(die_index: int, _window_index: int) -> void:
 
 
 func _on_reroll_started(_rerolled_indices: Array[int]) -> void:
-	_tumbler.begin_tumble(_controller.faces, _controller.locked, _config.tumble_duration_s)
+	_tumbler.begin_tumble(_controller.faces, _controller.locked, _tumble_duration_s())
 	_status.text = "Re-rolling…"
 
 

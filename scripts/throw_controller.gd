@@ -29,7 +29,9 @@ var _lock_sequence: Array[int] = []
 var _lock_windows: Array[int] = []
 var _window_remaining: Array[float] = [0.0, 0.0, 0.0]
 var _accumulated: float = 0.0
-var _drawn: Array[StringName] = []
+var _drawn: Array[DiceBag.Die] = []
+var _shattered: Array[bool] = []
+var _material_cache: Dictionary = {}
 var _config: ThrowConfig
 var _bag: DiceBag
 var _rng: RngCore
@@ -56,6 +58,7 @@ func start_throw() -> void:
 	for i in _drawn.size():
 		faces.append(_roll_face())
 		locked.append(false)
+		_shattered.append(false)
 	_accumulated = 0.0
 	window_index = 0
 	state = State.TUMBLE
@@ -147,7 +150,12 @@ func _end_window_all_locked() -> void:
 func _begin_reroll() -> void:
 	var rerolled: Array[int] = []
 	for i in faces.size():
-		if not locked[i]:
+		if locked[i] or _shattered[i]:
+			continue
+		var mat := _material_res(_drawn[i].material_id)
+		if mat != null and mat.shatter_on_reroll:
+			_shattered[i] = true
+		else:
 			faces[i] = _roll_face()
 			rerolled.append(i)
 	_accumulated = 0.0
@@ -175,13 +183,30 @@ func _force_lock_remaining() -> void:
 
 func _resolve() -> void:
 	state = State.RESOLVED
-	_bag.return_dice(_drawn)
-	_drawn = []
 	var result := ThrowResult.new()
 	result.faces = faces.duplicate()
 	result.locked_order = _lock_sequence.duplicate()
 	result.lock_windows = _lock_windows.duplicate()
 	result.window_remaining_s = _window_remaining.duplicate()
+	result.shattered = _shattered.duplicate()
+	var pip_off: Array[int] = []
+	var pip_mul: Array[int] = []
+	var carve_types: Array[StringName] = []
+	for i in faces.size():
+		var die_mat: StringName = _drawn[i].material_id if i < _drawn.size() else &"standard"
+		var mat := _material_res(die_mat)
+		pip_off.append(mat.pip_offset if mat != null else 0)
+		pip_mul.append(mat.pip_multiplier if mat != null else 1)
+		if i < _drawn.size():
+			var _d := _drawn[i]
+			carve_types.append(_d.carve_type if _d.carved_face == faces[i] else &"")
+		else:
+			carve_types.append(&"")
+	result.pip_offsets = pip_off
+	result.pip_multipliers = pip_mul
+	result.carve_types = carve_types
+	_bag.return_dice(_drawn)
+	_drawn = []
 	last_result = result
 	resolved.emit(result)
 

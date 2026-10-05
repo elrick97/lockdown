@@ -11,3 +11,11 @@ var lock_windows: Array[int] = []
 ## Remaining time per window at the moment it ended; skipped windows are
 ## credited at full duration. Raw input for Heat.
 var window_remaining_s: Array[float] = [0.0, 0.0, 0.0]
+## Material pip adjustment arrays — parallel to faces.
+var pip_offsets: Array[int] = []
+var pip_multipliers: Array[int] = []
+## Shattered slots (Glass dice that were re-rolled) — excluded from scoring.
+var shattered: Array[bool] = []
+## Active carve type per die slot (empty string = no carving active this roll).
+## Parallel to faces; non-empty only when the rolled face matches carved_face.
+var carve_types: Array[StringName] = []
