@@ -125,12 +125,84 @@ func test_bone_keeps_base_tumble() -> void:
 # --- Shattered Glass is a dead slot ---
 
 func test_shattered_glass_cannot_be_locked() -> void:
-	var ctrl := _ctrl_with_bag(&"glass")
+	# A live Bone die keeps the throw going into Window 2 (an all-Glass tray would
+	# resolve at the re-roll: nothing left to lock).
+	var ctrl := _ctrl_mixed([&"glass", &"bone"])
 	ctrl.start_throw()
 	ctrl.tick(ctrl.tumble_duration())  # Window 1 opens
-	ctrl.tick(10.0)  # expire W1 unlocked → every Glass die shatters on re-roll
+	ctrl.tick(10.0)  # expire W1 unlocked → the Glass die shatters, Bone re-rolls
 	ctrl.tick(ctrl.tumble_duration())  # Window 2 opens
 	assert_eq(ctrl.state, ThrowController.State.LOCK_WINDOW)
-	assert_true(ctrl.is_shattered(0), "die 0 shattered")
-	assert_false(ctrl.lock_die(0), "a dead slot cannot be locked")
-	assert_false(ctrl.locked[0], "dead slot stays unlocked")
+	var glass := _indices_of(ctrl, &"glass")[0]
+	assert_true(ctrl.is_shattered(glass), "Glass die shattered")
+	assert_false(ctrl.lock_die(glass), "a dead slot cannot be locked")
+	assert_false(ctrl.locked[glass], "dead slot stays unlocked")
+
+
+# --- Dead slots don't hold a throw open (fix-dead-slot-early-end) ---
+
+## Bag of exactly the given materials; draw_size matches so every die is drawn.
+func _ctrl_mixed(materials: Array[StringName]) -> ThrowController:
+	var cfg := ThrowConfig.new()
+	cfg.tumble_duration_s = 1.0
+	cfg.lock_window_duration_s = 2.5
+	cfg.draw_size = materials.size()
+	var bag := DiceBag.new(0)
+	for m in materials:
+		bag.add(m)
+	return ThrowController.new(cfg, bag, RngCore.new(11))
+
+
+func _indices_of(ctrl: ThrowController, material: StringName) -> Array[int]:
+	var out: Array[int] = []
+	for i in ctrl.faces.size():
+		if ctrl._drawn[i].material_id == material:
+			out.append(i)
+	return out
+
+
+func _heat(r: ThrowResult) -> float:
+	return Heat.from_remaining(r.window_remaining_s, ScoringConfig.new(), 2.5)
+
+
+func test_locking_last_live_die_resolves_with_dead_slots() -> void:
+	# Case C: one Glass shatters after W1, the two live dice are locked 0.5 s into W2.
+	var ctrl := _ctrl_mixed([&"glass", &"bone", &"bone"])
+	ctrl.start_throw()
+	ctrl.tick(ctrl.tumble_duration())
+	ctrl.tick(2.5)  # W1 expires untouched: Glass shatters, Bone re-rolls
+	assert_eq(ctrl.state, ThrowController.State.REROLL, "live Bone dice still re-roll")
+	ctrl.tick(ctrl.tumble_duration())
+	ctrl.tick(0.5)
+	for i in _indices_of(ctrl, &"bone"):
+		ctrl.lock_die(i)
+	assert_eq(ctrl.state, ThrowController.State.RESOLVED, "last live lock resolves the throw")
+	assert_eq(ctrl.last_result.window_remaining_s, [0.0, 2.0, 2.5] as Array[float])
+	assert_almost_eq(_heat(ctrl.last_result), 1.3, 0.001, "same Heat as the play without Glass")
+
+
+func test_reroll_with_nothing_left_resolves_without_credit() -> void:
+	# Case A/B: Bone locked in W1, five Glass shatter at expiry → nothing left to lock.
+	var ctrl := _ctrl_mixed([&"bone", &"glass", &"glass", &"glass", &"glass", &"glass"])
+	var rerolls: Array[int] = []
+	ctrl.reroll_started.connect(func(idx: Array[int]) -> void: rerolls.append(idx.size()))
+	ctrl.start_throw()
+	ctrl.tick(ctrl.tumble_duration())
+	ctrl.lock_die(_indices_of(ctrl, &"bone")[0])
+	assert_eq(ctrl.state, ThrowController.State.LOCK_WINDOW, "live Glass keeps W1 open")
+	ctrl.tick(2.5)
+	assert_eq(ctrl.state, ThrowController.State.RESOLVED, "resolves instead of running empty windows")
+	assert_true(rerolls.is_empty(), "no re-roll tumble starts")
+	assert_eq(ctrl.last_result.window_remaining_s, [0.0, 0.0, 0.0] as Array[float], "no credit")
+	assert_almost_eq(_heat(ctrl.last_result), 1.0, 0.001, "Heat unchanged from letting W2/W3 run out")
+
+
+func test_early_lock_without_glass_still_credits_full_windows() -> void:
+	var ctrl := _ctrl_mixed([&"bone", &"bone", &"bone"])
+	ctrl.start_throw()
+	ctrl.tick(ctrl.tumble_duration())
+	ctrl.tick(0.5)
+	for i in 3:
+		ctrl.lock_die(i)
+	assert_eq(ctrl.state, ThrowController.State.RESOLVED)
+	assert_eq(ctrl.last_result.window_remaining_s, [2.0, 2.5, 2.5] as Array[float])

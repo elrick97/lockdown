@@ -252,11 +252,17 @@ func _on_die_locked(die_index: int, _window_index: int) -> void:
 
 
 func _on_reroll_started(_rerolled_indices: Array[int]) -> void:
+	_mark_dead_slots()
+	_tumbler.begin_tumble(_controller.faces, _controller.locked, _tumble_duration_s())
+	_status.text = "Re-rolling…"
+
+
+## Shattered Glass is drawn as a dead slot. Called on every re-roll and on resolve,
+## because a re-roll that leaves nothing to lock resolves without re-rolling.
+func _mark_dead_slots() -> void:
 	for i in _controller.faces.size():
 		if _controller.is_shattered(i):
 			_tumbler.mark_dead(i)
-	_tumbler.begin_tumble(_controller.faces, _controller.locked, _tumble_duration_s())
-	_status.text = "Re-rolling…"
 
 
 func _on_carve_activated(_die_index: int, carve_type: StringName) -> void:
@@ -278,6 +284,7 @@ func _screen_shake(amplitude: float, duration: float) -> void:
 
 func _on_resolved(result: ThrowResult) -> void:
 	_timer_bar.visible = false
+	_mark_dead_slots()
 	_tumbler.reveal(_controller.faces, _controller.locked)
 	var breakdown := _scoring.score(result, _scoring_config, _effective_window_s, false, RunCoordinator.inventory)
 	if not breakdown.combos.is_empty():

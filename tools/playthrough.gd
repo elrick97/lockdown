@@ -66,29 +66,60 @@ func _scenario_dice_materials() -> void:
 	_check(r.pip_offsets.all(func(o: int) -> bool: return o == -1), "Iron dice carry pip_offset -1")
 	_check(b.pips < raw_pips, "Iron scores fewer pips than the faces show (%d < %d)" % [b.pips, raw_pips])
 	await _screenshot("materials_iron_scored")
-	# Glass: x2 pips when locked in W1; shatters when re-rolled.
-	scene = await _load_run(1, func(bag: DiceBag) -> void: bag.add(&"glass", 6))
+	# Glass: x2 pips when locked in W1; un-locked Glass shatters into dead slots.
+	# One Bone die keeps the throw going into Window 2.
+	var glass_bag := func(bag: DiceBag) -> void:
+		bag.add(&"glass", 5)
+		bag.add(&"bone", 1)
+	scene = await _load_run(1, glass_bag)
 	_press(scene._throw_button)
 	await _wait(func() -> bool: return scene._controller.state == ThrowController.State.LOCK_WINDOW)
-	_tap_die(scene, 0)  # keep one Glass die, let the rest be re-rolled
-	await _wait(func() -> bool: return scene._controller.state == ThrowController.State.REROLL)
 	var ctrl_g: ThrowController = scene._controller
-	var dead_idx := range(1, ctrl_g.faces.size())
-	_check(not ctrl_g.is_shattered(0) and dead_idx.all(func(i: int) -> bool: return ctrl_g.is_shattered(i)),
-		"Glass: the 5 un-locked dice shattered on re-roll, the locked one survived")
+	var glass_idx := _indices_of(ctrl_g, &"glass")
+	var bone_i: int = _indices_of(ctrl_g, &"bone")[0]
+	var kept: int = glass_idx[0]
+	var dead_idx := glass_idx.slice(1)
+	_tap_die(scene, kept)  # keep one Glass die, let the other four shatter
+	await _wait(func() -> bool: return ctrl_g.state == ThrowController.State.REROLL)
+	_check(not ctrl_g.is_shattered(kept) and dead_idx.all(func(i: int) -> bool: return ctrl_g.is_shattered(i)),
+		"Glass: the 4 un-locked Glass dice shattered on re-roll, the locked one survived")
 	var faces_at_shatter := ctrl_g.faces.duplicate()
 	_check(dead_idx.all(func(i: int) -> bool: return scene._tumbler.dead[i] and scene._tumbler.is_static(i)),
 		"Glass: shattered dice are drawn as static, dimmed dead slots (not re-tumbling)")
 	await _screenshot("materials_glass_after_reroll")
-	await _wait(func() -> bool: return scene._controller.state == ThrowController.State.RESOLVED)
-	r = scene._controller.last_result
+	await _wait(func() -> bool: return ctrl_g.state == ThrowController.State.LOCK_WINDOW)
+	_check(not ctrl_g.lock_die(dead_idx[0]), "Glass: a dead slot cannot be locked")
+	_tap_die(scene, bone_i)  # the last live die
+	_check(ctrl_g.state == ThrowController.State.RESOLVED,
+		"Dead slots: locking the last live die resolves at once (no waiting out W2/W3)")
+	r = ctrl_g.last_result
+	_check(r.window_remaining_s[1] > 0.0 and is_equal_approx(r.window_remaining_s[2], 2.5),
+		"Dead slots: the early lock is credited (window times %s)" % [r.window_remaining_s])
 	_check(dead_idx.all(func(i: int) -> bool: return r.faces[i] == faces_at_shatter[i]),
 		"Glass: dead slots keep their last face")
-	_check(not ctrl_g.lock_die(1), "Glass: a dead slot cannot be locked")
-	_check(r.pip_multipliers[0] == 2, "Glass die carries pip_multiplier 2")
+	_check(r.pip_multipliers[kept] == 2, "Glass die carries pip_multiplier 2")
 	b = _score(scene, r)
-	_check(b.pips == r.faces[0] * 2, "Glass: only the locked die scores, at x2 pips (%d)" % b.pips)
+	_check(b.pips == r.faces[kept] * 2 + r.faces[bone_i],
+		"Glass: the locked Glass die scores x2 pips, dead slots score nothing (%d)" % b.pips)
 	await _screenshot("materials_glass_scored")
+	# Nothing left to lock: Bone locked in W1, the five Glass dice shatter at expiry.
+	scene = await _load_run(1, glass_bag)
+	_press(scene._throw_button)
+	await _wait(func() -> bool: return scene._controller.state == ThrowController.State.LOCK_WINDOW)
+	var ctrl_n: ThrowController = scene._controller
+	var rerolls: Array[int] = []
+	ctrl_n.reroll_started.connect(func(idx: Array[int]) -> void: rerolls.append(idx.size()))
+	_tap_die(scene, _indices_of(ctrl_n, &"bone")[0])
+	await _wait(func() -> bool: return ctrl_n.state == ThrowController.State.RESOLVED)
+	r = ctrl_n.last_result
+	_check(rerolls.is_empty(), "Nothing left to lock: resolves at W1 expiry, no empty re-roll or windows")
+	_check(r.window_remaining_s == ([0.0, 0.0, 0.0] as Array[float]),
+		"Nothing left to lock: skipped windows credited 0 s (%s)" % [r.window_remaining_s])
+	_check(is_equal_approx(_score(scene, r).heat, 1.0), "Nothing left to lock: Heat stays x1.0")
+	var shattered_n := range(r.faces.size()).filter(func(i: int) -> bool: return r.shattered[i])
+	_check(shattered_n.size() == 5 and shattered_n.all(func(i: int) -> bool: return scene._tumbler.dead[i]),
+		"Nothing left to lock: the shattered dice are drawn as dead slots")
+	await _screenshot("materials_nothing_left_resolved")
 
 
 func _scenario_carving() -> void:
@@ -260,6 +291,14 @@ func _lock_all(scene: Control) -> void:
 		if not ctrl.locked[i] and not ctrl._shattered[i]:
 			_tap_die(scene, i)
 			await process_frame
+
+
+func _indices_of(ctrl: ThrowController, material: StringName) -> Array[int]:
+	var out: Array[int] = []
+	for i in ctrl.faces.size():
+		if ctrl._drawn[i].material_id == material:
+			out.append(i)
+	return out
 
 
 func _score(scene: Control, r: ThrowResult) -> ScoreBreakdown:

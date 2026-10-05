@@ -4,10 +4,13 @@ extends GutTest
 ## tap-forgiveness path locks dice.
 
 const SCENE := preload("res://scenes/throw/throw_scene.tscn")
+## Fixed seed: with a random one, a strong hand sometimes won the round and THROW
+## (correctly) stayed disabled, failing the re-enable assert about 1 run in 4.
+const SMOKE_SEED := 1234
 
 
 func before_each() -> void:
-	RunCoordinator.start_run()
+	RunCoordinator.start_run(SMOKE_SEED)
 
 
 func _fast_config() -> ThrowConfig:

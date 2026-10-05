@@ -103,7 +103,7 @@ func lock_die(index: int) -> bool:
 		var ctx := CharmContext.for_lock(index, window_index, faces, locked, _lock_wins_by_slot())
 		for charm in _inventory.iter_charms():
 			charm.on_lock(index, faces[index], window_index, ctx)
-	if not locked.has(false):
+	if _all_done():
 		_end_window_all_locked()
 	return true
 
@@ -113,6 +113,14 @@ func lock_die(index: int) -> bool:
 func restart_window() -> void:
 	if state == State.LOCK_WINDOW:
 		_accumulated = 0.0
+
+
+## Every slot is done: locked, or a dead slot that can never be locked.
+func _all_done() -> bool:
+	for i in locked.size():
+		if not locked[i] and not _shattered[i]:
+			return false
+	return true
 
 
 ## True when the die in `index` is a dead slot (Glass shattered on re-roll).
@@ -164,6 +172,11 @@ func _begin_reroll() -> void:
 		else:
 			faces[i] = _roll_face()
 			rerolled.append(i)
+	if _all_done():
+		# Nothing left to lock: resolve now instead of running empty windows. The
+		# skipped windows keep their 0 s (no credit: nothing was locked in them).
+		_resolve()
+		return
 	_accumulated = 0.0
 	state = State.REROLL
 	reroll_started.emit(rerolled)
