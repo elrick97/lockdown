@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Boss round halves lock-window duration
 On a boss ante, `ThrowScene` SHALL apply `boss_window_scale` to the lock-window duration before constructing the `ThrowController`. The effective window duration for scoring Heat SHALL match the boss-scaled value.

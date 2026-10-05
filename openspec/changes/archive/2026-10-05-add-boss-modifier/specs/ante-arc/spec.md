@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: AnteConfig carries round names and boss parameters
 `AnteConfig` SHALL include:

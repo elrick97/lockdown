@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: AnteConfig carries risk-skip parameters
 `AnteConfig` SHALL include:

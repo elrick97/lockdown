@@ -111,3 +111,85 @@ Hook calls SHALL pass a freshly-built `CharmContext` snapshot. Hook calls SHALL 
 - **WHEN** `ThrowController` is constructed without a `CharmInventory`
 - **THEN** no hook calls are made and throw behaviour is identical to M0
 
+### Requirement: Carved dice emit carve_activated on lock
+`ThrowController` SHALL emit `signal carve_activated(die_index: int, carve_type: StringName)` when:
+1. A die is locked (by player tap or force-lock), AND
+2. The die has a non-empty `carve_type`, AND
+3. The die's current face equals its `carved_face`
+
+The signal fires after `die_locked` and before charm hooks.
+
+#### Scenario: Spark die locked on carved face
+- **GIVEN** a die with `carved_face = 4`, `carve_type = &"spark"` is drawn and locked showing face 4
+- **WHEN** the die is locked
+- **THEN** `carve_activated` emits with `carve_type = &"spark"`
+
+#### Scenario: Carved die locked on wrong face
+- **GIVEN** a die with `carved_face = 4`, `carve_type = &"spark"` is locked showing face 2
+- **WHEN** the die is locked
+- **THEN** `carve_activated` does NOT emit
+
+### Requirement: Spark extends current lock window
+`ThrowScene` SHALL call `ThrowController.freeze_window(0.5)` when `carve_activated` emits with `carve_type == &"spark"`. `freeze_window(duration)` subtracts `duration` from the window's accumulated time, effectively adding that many seconds to the remaining window time.
+
+#### Scenario: Spark extends window by 0.5 s
+- **GIVEN** a lock window with 0.8 s remaining (accumulated = window_s - 0.8)
+- **WHEN** `freeze_window(0.5)` is called
+- **THEN** the window now has 1.3 s remaining
+
+### Requirement: ThrowResult carries carve_types parallel array
+`ThrowResult.carve_types: Array[StringName]` SHALL hold the carve_type that activated for each tray die, or `&""` if no carve activated. Length equals the number of drawn dice.
+
+#### Scenario: Activated carves recorded per slot
+- **GIVEN** a Gem die (carved_face 5) locked showing 5 and a Spark die (carved_face 4) locked showing 2
+- **WHEN** the throw resolves
+- **THEN** `carve_types` holds `&"gem"` for the Gem slot and `&""` for the Spark slot and every other slot
+
+### Requirement: Boss round halves lock-window duration
+On a boss ante, `ThrowScene` SHALL apply `boss_window_scale` to the lock-window duration before constructing the `ThrowController`. The effective window duration for scoring Heat SHALL match the boss-scaled value.
+
+#### Scenario: Boss ante has shorter windows
+- **GIVEN** `lock_window_duration_s = 2.5` and `boss_window_scale = 0.5`
+- **WHEN** the player enters ante 3 (a boss ante)
+- **THEN** each lock window drains in 1.25 s instead of 2.5 s
+
+#### Scenario: Non-boss ante is unaffected
+- **WHEN** the player is on ante 1 or 2
+- **THEN** lock windows run at the full `lock_window_duration_s`
+
+### Requirement: Round type label shown in UI
+`ThrowScene` SHALL display the current ante's round type name (from `AnteConfig.round_names`) in the ante label.
+
+#### Scenario: Boss label visible
+- **WHEN** the player enters ante 3
+- **THEN** the ante label reads `"ANTE 3 / 3 — BOSS ROUND"`
+
+### Requirement: Die lock triggers haptic feedback
+`ThrowScene` SHALL call `Input.vibrate_handheld(30)` each time a die is locked during a lock window. The call is Android-only; on other platforms it is a no-op and requires no guard.
+
+#### Scenario: Die locked → vibration
+- **GIVEN** the game is running on Android
+- **WHEN** a die is locked during any lock window
+- **THEN** the device vibrates for approximately 30 ms
+
+### Requirement: Screen shake on combo land
+When a throw resolves and the scoring breakdown contains at least one combo, `ThrowScene` SHALL play a brief screen-shake: a decaying oscillation on the scene root's `position.x` property, amplitude **8 px**, duration **0.25 s**, 6 alternating steps (named tunables: `shake_amplitude_px = 8`, `shake_duration_s = 0.25`, `shake_steps = 6`). The shake is implemented as a Tween on the scene root `position` and resolves back to `Vector2.ZERO`. It does not conflict with `_apply_layout()` because anchors define the Control rect independently of `position`.
+
+#### Scenario: Combo lands → shake
+- **GIVEN** a throw resolves with a Pair or better
+- **WHEN** `ScoreCascade.play()` begins
+- **THEN** the scene root shakes briefly (amplitude decays to zero within `shake_duration_s`)
+
+#### Scenario: No combo → no shake
+- **GIVEN** a throw resolves with all loose dice (no combo)
+- **WHEN** `ScoreCascade.play()` begins
+- **THEN** no position tween is started
+
+### Requirement: Audio stub infrastructure
+`ThrowScene` SHALL own two `AudioStreamPlayer` children (`_sfx_lock`, `_sfx_combo`) created in `_ready()` with `stream = null`. Play calls SHALL be guarded: `if _sfx_lock.stream: _sfx_lock.play()`. Audio assets are assigned in the `.tscn` by the audio designer; no code changes are needed to activate sound once assets exist.
+
+#### Scenario: No stream assigned → no error
+- **GIVEN** `_sfx_lock.stream == null`
+- **WHEN** a die is locked
+- **THEN** no error is thrown and no audio plays
+

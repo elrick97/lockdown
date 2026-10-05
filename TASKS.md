@@ -53,14 +53,14 @@
 - [x] Shop scene: charm offers, re-roll, gold economy, interest `add-shop-scene`
 - [x] Charm framework: data-driven `.tres` resources + effect hook system (on_lock, on_score, on_window, on_throw) `add-charm-framework`
 - [x] 12 launch charms implemented (mix of speed/slow/value/combo archetypes per PRD §4.1) `add-12-charms`
-- [ ] Dice materials framework + Bone, Iron, Glass
-- [ ] Carving service in shop (face replacement: Wild, Gem, Spark)
-- [ ] Trinkets (consumables): re-tumble, freeze timer
-- [ ] 1 boss modifier (halved lock windows)
-- [ ] Risk round skip mechanic
+- [x] Dice materials framework + Bone, Iron, Glass `add-dice-materials`
+- [x] Carving service in shop (face replacement: Wild, Gem, Spark) `add-carving-service`
+- [x] Trinkets (consumables): re-tumble, freeze timer `add-trinkets`
+- [x] 1 boss modifier (halved lock windows) `add-boss-modifier`
+- [x] Risk round skip mechanic `add-risk-skip`
 
 ### Feel & presentation
-- [ ] First juice pass: score tick-up audio w/ rising pitch, lock haptics, combo screen shake
+- [~] First juice pass: score tick-up audio w/ rising pitch, lock haptics, combo screen shake `add-juice-pass` *(haptics + shake done; rising-pitch tick-up audio still open: needs audio assets, players are stubbed)*
 - [x] Number cascade animation on scoring `add-score-cascade`
 - [x] Art direction exploration: 3 style frames, pick one `add-art-direction` *(picked B "Smoke Room", logged in PRD §5)*
 - [ ] UI layout pass: thumb-zone audit on-device

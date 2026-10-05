@@ -4,9 +4,7 @@
 The ante climb that gives a run its arc: per-ante target scores and how clearing or failing them advances or ends the run.
 
 Named tunables on `AnteConfig` Resource (current M0 values): `targets` = **[150, 350, 700]** (3 antes). These are the minimum cumulative scores needed to clear each ante.
-
 ## Requirements
-
 ### Requirement: Ante arc drives run progression
 `AnteArc` SHALL advance through a sequence of antes. After a round is won it checks whether more antes remain: if yes it advances to the next ante; if no it emits `run_won`. If a round is lost it emits `run_lost` immediately.
 
@@ -74,3 +72,34 @@ Once `run_won` or `run_lost` has fired, `AnteArc` SHALL ignore further `on_round
 #### Scenario: No double-fire after run end
 - **WHEN** `on_round_won` is called again after `run_won` has already fired
 - **THEN** no additional signal is emitted
+
+### Requirement: AnteConfig carries round names and boss parameters
+`AnteConfig` SHALL include:
+- `round_names: Array[String]` — one label per ante (e.g. "Open", "Risk", "Boss"), parallel to `targets`
+- `boss_antes: Array[int]` — 1-based ante indices that receive the boss modifier (default: `[3]`)
+- `boss_window_scale: float` — multiplier applied to `lock_window_duration_s` on boss antes (current value: `0.5`)
+
+#### Scenario: Round names accessible per ante
+- **WHEN** `AnteConfig` is loaded with default values and `current_ante = 3`
+- **THEN** `round_names[2]` returns `"Boss"`
+
+#### Scenario: Boss antes list consulted
+- **WHEN** `current_ante = 3` and `boss_antes = [3]`
+- **THEN** the ante is identified as a boss ante and `boss_window_scale` is applied
+
+### Requirement: AnteConfig carries risk-skip parameters
+`AnteConfig` SHALL include:
+- `risk_antes: Array[int]` — 1-based ante indices where a skip offer is shown (default: `[2]`)
+- `skip_reward_gold: int` — gold earned when the player skips the risk round (current value: `3`)
+
+#### Scenario: Skip reward configured
+- **WHEN** `AnteConfig` has default values
+- **THEN** `skip_reward_gold` is 3 and `risk_antes` is `[2]`
+
+### Requirement: Risk round can be skipped for reduced gold
+`AnteArc.skip_round()` SHALL behave identically to `on_round_won()`: advance the ante or emit `run_won`. `RunCoordinator.on_risk_skipped()` SHALL earn `skip_reward_gold` before calling `skip_round()`.
+
+#### Scenario: Skip earns gold and advances
+- **WHEN** the player presses SKIP on ante 2
+- **THEN** `GoldLedger.gold` increases by `skip_reward_gold` and `current_ante` becomes 3
+

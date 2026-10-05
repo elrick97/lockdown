@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Die lock triggers haptic feedback
 `ThrowScene` SHALL call `Input.vibrate_handheld(30)` each time a die is locked during a lock window. The call is Android-only; on other platforms it is a no-op and requires no guard.
