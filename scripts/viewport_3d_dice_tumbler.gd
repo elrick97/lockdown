@@ -101,7 +101,7 @@ func _render_tumbling(progress: float) -> void:
 	_scramble_frame += 1
 	var eased := 1.0 - pow(1.0 - progress, 3.0)
 	for i in count:
-		if locked[i]:
+		if is_static(i):
 			continue
 		if progress < SCRAMBLE_UNTIL:
 			_set_texture(i, 1 + (_scramble_frame / 2 + i) % 6)
@@ -115,7 +115,10 @@ func _render_face(index: int, face: int, is_locked: bool) -> void:
 	if index < 0 or index >= _dice.size():
 		return
 	_set_texture(index, face)
-	_mats[index].albedo_color = COLOR_LOCKED if is_locked else Color.WHITE
+	if index < dead.size() and dead[index]:
+		_mats[index].albedo_color = COLOR_DEAD
+	else:
+		_mats[index].albedo_color = COLOR_LOCKED if is_locked else Color.WHITE
 	_dice[index].basis = Basis()
 
 

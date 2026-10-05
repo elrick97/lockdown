@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Die is a typed object bundling material and carving
 Each die in the bag SHALL be represented by a `DiceBag.Die` inner class instance with:

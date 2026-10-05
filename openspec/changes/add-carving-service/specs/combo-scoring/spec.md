@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Gem carved dice add bonus chips on lock
 When a locked die shows its `carved_face` and its `carve_type == &"gem"`, the scoring engine SHALL add **20 chips** to `ScoreBreakdown.charm_chips` (named tunable: `gem_chips`, current value: **20**). This applies per qualifying die; multiple Gem dice stack.

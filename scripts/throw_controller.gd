@@ -73,7 +73,7 @@ func tick(delta: float) -> void:
 	match state:
 		State.TUMBLE, State.REROLL:
 			_accumulated += delta
-			if _accumulated >= _config.tumble_duration_s:
+			if _accumulated >= tumble_duration():
 				_start_window(window_index + 1)
 		State.LOCK_WINDOW:
 			_accumulated += delta
@@ -89,8 +89,8 @@ func tick(delta: float) -> void:
 func lock_die(index: int) -> bool:
 	if state != State.LOCK_WINDOW:
 		return false
-	if index < 0 or index >= locked.size() or locked[index]:
-		return false
+	if index < 0 or index >= locked.size() or locked[index] or _shattered[index]:
+		return false  # shattered Glass is a dead slot (dice-materials spec)
 	locked[index] = true
 	_lock_sequence.append(index)
 	_lock_windows.append(window_index)
@@ -113,6 +113,11 @@ func lock_die(index: int) -> bool:
 func restart_window() -> void:
 	if state == State.LOCK_WINDOW:
 		_accumulated = 0.0
+
+
+## True when the die in `index` is a dead slot (Glass shattered on re-roll).
+func is_shattered(index: int) -> bool:
+	return index >= 0 and index < _shattered.size() and _shattered[index]
 
 
 func time_remaining() -> float:
@@ -248,11 +253,16 @@ func freeze_window(duration: float) -> void:
 	_accumulated = maxf(0.0, _accumulated - duration)
 
 
-func get_drawn_materials() -> Array[StringName]:
-	var mats: Array[StringName] = []
+## Tumble/re-roll duration for this throw: base × the slowest drawn material's
+## tumble_duration_factor (dice-materials spec: Iron 1.4). The scene animates with
+## this same value, so the window never opens while dice are still tumbling.
+func tumble_duration() -> float:
+	var factor := 1.0
 	for d in _drawn:
-		mats.append(d.material_id)
-	return mats
+		var mat := _material_res(d.material_id)
+		if mat != null:
+			factor = maxf(factor, mat.tumble_duration_factor)
+	return _config.tumble_duration_s * factor
 
 
 func _material_res(name: StringName) -> DiceMaterial:

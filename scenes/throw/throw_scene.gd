@@ -95,7 +95,8 @@ func _apply_layout() -> void:
 	_set_rect(_tray, 0.0, 0.25, 1.0, 0.75, 0.0, 0.0, 0.0, 0.0)
 	_set_rect(_throw_button, 0.5, 1.0, 0.5, 1.0, -220.0, -300.0, 220.0, -120.0)
 	if _skip_button != null:
-		_set_rect(_skip_button, 0.0, 1.0, 0.5, 1.0, 40.0, -300.0, -10.0, -120.0)
+		# Own row directly above THROW: in thumb reach, never overlapping it.
+		_set_rect(_skip_button, 0.5, 1.0, 0.5, 1.0, -220.0, -440.0, 220.0, -320.0)
 	if _trinket_row != null:
 		_set_rect(_trinket_row, 0.0, 0.0, 1.0, 0.0, 40.0, 645.0, -40.0, 780.0)
 	_cover.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -162,7 +163,7 @@ func _try_lock_at(point: Vector2) -> void:
 	var best := -1
 	var best_dist := INF
 	for i in _controller.faces.size():
-		if _controller.locked[i]:
+		if _controller.locked[i] or _controller.is_shattered(i):
 			continue
 		var rect := _tumbler.die_rect(i)
 		var clamped := point.clamp(rect.position, rect.end)
@@ -209,14 +210,7 @@ func _rebuild_trinket_buttons() -> void:
 
 
 func _tumble_duration_s() -> float:
-	var factor := 1.0
-	for mat_name in _controller.get_drawn_materials():
-		var path := "res://resources/dice_materials/%s.tres" % mat_name
-		if ResourceLoader.exists(path):
-			var mat := load(path) as DiceMaterial
-			if mat != null:
-				factor = maxf(factor, mat.tumble_duration_factor)
-	return _config.tumble_duration_s * factor
+	return _controller.tumble_duration()
 
 
 func _window_s_for(ante: int) -> float:
@@ -259,6 +253,9 @@ func _on_die_locked(die_index: int, _window_index: int) -> void:
 
 
 func _on_reroll_started(_rerolled_indices: Array[int]) -> void:
+	for i in _controller.faces.size():
+		if _controller.is_shattered(i):
+			_tumbler.mark_dead(i)
 	_tumbler.begin_tumble(_controller.faces, _controller.locked, _tumble_duration_s())
 	_status.text = "Re-rolling…"
 

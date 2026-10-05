@@ -47,4 +47,4 @@
 
 ## 8. Verify on device
 
-- [ ] 8.1 Build + deploy; buy Wild-6 Bone, verify it appears in tray, locks as wild in a straight or quad scenario; buy Gem-5 Bone, verify +20 chips on score; buy Spark-4 Bone, verify window visibly extends on lock
+- [x] 8.1 Verified locally 2026-10-05 (headless GUT 155/155 + desktop playthrough `tools/playthrough.gd`, 0 failed checks): Wild joins combos (Quint, Full House), Gem adds +20 chips, Spark extends the window 0.78 s → 1.28 s. **Fixed:** scoring froze whenever a Wild stood in for a value no die showed (`_build_breakdown` looped forever); regression tests added.

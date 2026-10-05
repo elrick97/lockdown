@@ -92,3 +92,45 @@ func test_all_shattered_zero_score() -> void:
 	var r := _result([6, 6], [0, 0], [2, 2], [true, true])
 	var bd := _engine.score(r, _config, WINDOW)
 	assert_eq(bd.final_score, 0, "all shattered → score 0")
+
+
+# --- Iron tumbles slower (tumble_duration_factor 1.4) ---
+
+func _ctrl_with_bag(material: StringName) -> ThrowController:
+	var cfg := ThrowConfig.new()
+	cfg.tumble_duration_s = 1.0
+	var bag := DiceBag.new(0)
+	bag.add(material, cfg.draw_size)
+	return ThrowController.new(cfg, bag, RngCore.new(7))
+
+
+func test_iron_delays_the_lock_window() -> void:
+	# The window must open after the slower tumble, not on the base duration
+	# (the animation already used the factor; the controller did not).
+	var ctrl := _ctrl_with_bag(&"iron")
+	ctrl.start_throw()
+	assert_almost_eq(ctrl.tumble_duration(), 1.4, 0.001, "Iron tumble = base × 1.4")
+	ctrl.tick(1.2)
+	assert_eq(ctrl.state, ThrowController.State.TUMBLE, "still tumbling at 1.2 s")
+	ctrl.tick(0.25)
+	assert_eq(ctrl.state, ThrowController.State.LOCK_WINDOW, "window opens after 1.4 s")
+
+
+func test_bone_keeps_base_tumble() -> void:
+	var ctrl := _ctrl_with_bag(&"bone")
+	ctrl.start_throw()
+	assert_almost_eq(ctrl.tumble_duration(), 1.0, 0.001, "Bone tumble = base")
+
+
+# --- Shattered Glass is a dead slot ---
+
+func test_shattered_glass_cannot_be_locked() -> void:
+	var ctrl := _ctrl_with_bag(&"glass")
+	ctrl.start_throw()
+	ctrl.tick(ctrl.tumble_duration())  # Window 1 opens
+	ctrl.tick(10.0)  # expire W1 unlocked → every Glass die shatters on re-roll
+	ctrl.tick(ctrl.tumble_duration())  # Window 2 opens
+	assert_eq(ctrl.state, ThrowController.State.LOCK_WINDOW)
+	assert_true(ctrl.is_shattered(0), "die 0 shattered")
+	assert_false(ctrl.lock_die(0), "a dead slot cannot be locked")
+	assert_false(ctrl.locked[0], "dead slot stays unlocked")

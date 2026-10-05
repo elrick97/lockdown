@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Carved dice emit carve_activated on lock
 `ThrowController` SHALL emit `signal carve_activated(die_index: int, carve_type: StringName)` when:
@@ -28,3 +28,8 @@ The signal fires after `die_locked` and before charm hooks.
 
 ### Requirement: ThrowResult carries carve_types parallel array
 `ThrowResult.carve_types: Array[StringName]` SHALL hold the carve_type that activated for each tray die, or `&""` if no carve activated. Length equals the number of drawn dice.
+
+#### Scenario: Activated carves recorded per slot
+- **GIVEN** a Gem die (carved_face 5) locked showing 5 and a Spark die (carved_face 4) locked showing 2
+- **WHEN** the throw resolves
+- **THEN** `carve_types` holds `&"gem"` for the Gem slot and `&""` for the Spark slot and every other slot

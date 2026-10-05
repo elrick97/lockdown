@@ -13,6 +13,7 @@ const DIE_GAP := 40.0
 # Shared die-face look (used by renderers to draw/generate pip faces).
 const COLOR_FACE := Color(0.92, 0.92, 0.92)
 const COLOR_LOCKED := Color(0.35, 0.78, 0.42)
+const COLOR_DEAD := Color(0.38, 0.38, 0.42)  # shattered Glass: dimmed, never green
 const COLOR_PIP := Color(0.12, 0.12, 0.12)
 const PIP := {
 	"tl": Vector2(0.28, 0.28), "tc": Vector2(0.5, 0.28), "tr": Vector2(0.72, 0.28),
@@ -31,6 +32,7 @@ const FACE_PIPS := {
 var count: int = 0
 var faces: Array[int] = []
 var locked: Array[bool] = []
+var dead: Array[bool] = []  # dead slots keep their last face and never animate
 
 var _elapsed := 0.0
 var _duration := 1.0
@@ -41,9 +43,11 @@ func build(p_count: int) -> void:
 	count = p_count
 	faces.clear()
 	locked.clear()
+	dead.clear()
 	for i in count:
 		faces.append(1)
 		locked.append(false)
+		dead.append(false)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_create_visuals(p_count)
@@ -97,6 +101,18 @@ func lock_die(index: int, face: int) -> void:
 		locked[index] = true
 		faces[index] = face
 		_render_face(index, face, true)
+
+
+## Dead slot (dice-materials spec): the die keeps its last face visually, is drawn
+## dimmed, and is skipped by every later tumble.
+func mark_dead(index: int) -> void:
+	if index >= 0 and index < dead.size():
+		dead[index] = true
+		_render_face(index, faces[index], false)
+
+
+func is_static(index: int) -> bool:
+	return locked[index] or (index < dead.size() and dead[index])
 
 
 func die_rect(index: int) -> Rect2:

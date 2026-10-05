@@ -69,3 +69,5 @@ var tumble_s := _slowest_tumble_factor() * _config.tumble_duration_s
 Where `_slowest_tumble_factor()` iterates the active tray's materials and returns the max `tumble_speed_factor` (reciprocal: Iron factor 1.4 means tumble is 1.4× longer).
 
 Actually: rename it to `tumble_duration_factor` to avoid sign confusion. Iron: 1.4; Bone/Glass: 1.0.
+
+**Amended during local verification (2026-10-05):** the factor originally reached only the animation, so with Iron the lock window opened at the base 1.5 s while the dice still tumbled for 2.1 s. `ThrowController.tumble_duration()` now owns the value (base × slowest drawn material's factor) and drives the Tumble/Reroll state timer. `ThrowScene._tumble_duration_s()` returns the same value for `begin_tumble()`, so the timer and the animation can't drift apart.

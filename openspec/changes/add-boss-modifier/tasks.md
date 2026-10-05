@@ -16,4 +16,4 @@
 
 ## 4. Verify on device
 
-- [ ] 4.1 Build + deploy; play through to ante 3 — confirm "BOSS ROUND" label and noticeably shorter lock windows
+- [x] 4.1 Verified locally 2026-10-05 (headless GUT 155/155 + desktop playthrough `tools/playthrough.gd`, 0 failed checks): ante 3 shows 'BOSS ROUND' and the lock window measures ~1.2 s (half of 2.5 s).

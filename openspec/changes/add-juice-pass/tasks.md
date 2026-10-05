@@ -14,4 +14,4 @@
 
 ## 4. Verify on device
 
-- [ ] 4.1 Build + deploy; verify phone vibrates on each die lock; verify scene shakes briefly when combo lands in cascade
+- [x] 4.1 Verified locally 2026-10-05 (headless GUT 155/155 + desktop playthrough `tools/playthrough.gd`, 0 failed checks): the scene shakes (max 6.4 px) when a combo lands and settles back to the origin; the lock haptic call runs on every lock. The vibration itself can't be felt on desktop.

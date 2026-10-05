@@ -99,6 +99,28 @@ func test_wild_enables_small_straight() -> void:
 	assert_eq(bd.combos[0].name, "Large Straight")
 
 
+func test_wild_substitutes_a_value_it_does_not_show() -> void:
+	# Spec scenario shape: [4, 4, Wild] completes three 4s whatever face the Wild
+	# shows. Here the Wild shows 5, so its combo value (4) is not physically present.
+	# This used to spin forever in _build_breakdown looking for a third die showing 4.
+	var carves: Array[StringName] = [&"", &"", &"wild", &"", &"", &""]
+	var r := _result_with_carve([4, 4, 5, 1, 1, 6], carves)
+	var bd := _engine.score(r, _config, WINDOW_S)
+	assert_eq(bd.combos[0].name, "Full House", "Wild completes a Full House (4-4-4+1-1 or 1-1-1+4-4)")
+	assert_true(2 in bd.combos[0].dice_indices, "the Wild die is part of the Full House")
+	assert_false(5 in bd.combos[0].faces, "breakdown shows the Wild's substituted value, not its 5")
+
+
+func test_two_wilds_substituting_absent_values() -> void:
+	# Two Wilds showing 6 next to [2, 5, 1, 4]: the best use is a Large Straight
+	# with the Wilds as 3 and 6 (or a better partition); neither substitution may hang.
+	var carves: Array[StringName] = [&"wild", &"wild", &"", &"", &"", &""]
+	var r := _result_with_carve([6, 6, 2, 5, 1, 4], carves)
+	var bd := _engine.score(r, _config, WINDOW_S)
+	assert_eq(bd.combos[0].name, "Large Straight", "Wilds fill the 3 and the 6")
+	assert_eq(bd.loose_indices.size(), 0, "every die is used")
+
+
 func test_wild_no_effect_when_not_active() -> void:
 	# All carve_types empty → normal scoring path
 	var carves: Array[StringName] = [&"", &"", &"", &"", &"", &""]

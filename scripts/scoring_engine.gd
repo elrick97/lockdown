@@ -41,16 +41,21 @@ func score(result: ThrowResult, config: ScoringConfig,
 			wild_locked_slots.append(j)
 
 	var chosen: Array
+	# Dice as the combos see them: Wild slots carry their substituted value, so the
+	# breakdown can assign a Wild to the combo it completes. Pips stay on real faces.
+	var combo_locked := locked
 	if wild_locked_slots.is_empty():
 		var candidates := _candidates(counts)
 		chosen = _search(candidates, 0, counts, [], pips, config)
 	else:
-		chosen = _best_wild_combos(locked, wild_locked_slots, pips, config)
+		var wild_best := _best_wild_combos(locked, wild_locked_slots, pips, config)
+		chosen = wild_best[0]
+		combo_locked = wild_best[1]
 
 	var heat := Heat.steady(config) if steady else Heat.from_remaining(
 		result.window_remaining_s, config, window_duration)
 
-	var bd := _build_breakdown(chosen, locked, pips, heat, config)
+	var bd := _build_breakdown(chosen, combo_locked, pips, heat, config)
 	bd.charm_chips += gem_chips
 
 	# Fire charm on_score hooks in slot order before computing final total.
@@ -218,8 +223,10 @@ func _build_breakdown(chosen: Array, locked: Array, pips: int,
 
 # --- Wild carving: try every face substitution, keep the best combo set ------
 
-## Tries all 6^N substitutions for N wild slots and returns the chosen combo
-## array that yields the highest scored combo value. N ≤ 2 in M1 (max 36 calls).
+## Tries all 6^N substitutions for N wild slots and returns
+## [chosen combos, locked dice with the winning substitution applied]. The second
+## element is what the breakdown must assign dice from: a Wild's substituted value
+## need not match any face actually showing. N ≤ 2 in M1 (max 36 calls).
 func _best_wild_combos(locked: Array, wild_locked_slots: Array[int],
 		pips: int, config: ScoringConfig) -> Array:
 	# Build the combination list: each entry is an Array[int] of face values
@@ -235,6 +242,7 @@ func _best_wild_combos(locked: Array, wild_locked_slots: Array[int],
 		combos = expanded
 
 	var best: Array = []
+	var best_locked := locked
 	var best_eval := _eval([], pips, config)
 
 	for face_vals in combos:
@@ -248,6 +256,7 @@ func _best_wild_combos(locked: Array, wild_locked_slots: Array[int],
 		var mod_eval := _eval(mod_chosen, pips, config)
 		if _better(mod_eval, best_eval):
 			best = mod_chosen
+			best_locked = mod_locked
 			best_eval = mod_eval
 
-	return best
+	return [best, best_locked]

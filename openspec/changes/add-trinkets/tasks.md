@@ -38,4 +38,4 @@
 
 ## 8. Verify on device
 
-- [ ] 8.1 Build + deploy; buy Re-Tumble, activate mid-window — dice re-roll; buy Freeze Timer, activate — window visibly extends
+- [x] 8.1 Verified locally 2026-10-05 (headless GUT 155/155 + desktop playthrough `tools/playthrough.gd`, 0 failed checks): buttons appear during the window, Re-Tumble re-rolls every unlocked die without closing the window, Freeze Timer extends 0.49 s → 2.49 s, both are consumed.

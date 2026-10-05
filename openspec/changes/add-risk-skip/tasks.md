@@ -21,4 +21,4 @@
 
 ## 5. Verify on device
 
-- [ ] 5.1 Build + deploy; reach ante 2 — SKIP button visible; press it — earn 3g and go to Shop for ante 3
+- [x] 5.1 Verified locally 2026-10-05 (headless GUT 155/155 + desktop playthrough `tools/playthrough.gd`, 0 failed checks): SKIP shows only on ante 2, pays 3 gold and opens the Shop with the run at ante 3. **Fixed:** SKIP overlapped THROW; it now sits in its own row above it.

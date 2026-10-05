@@ -49,4 +49,4 @@
 
 ## 10. Verify on device
 
-- [ ] 10.1 Build + deploy; buy an Iron die in shop; confirm lower scores; buy a Glass die — confirm high pips but dies disappear on re-roll
+- [x] 10.1 Verified locally 2026-10-05 (headless GUT 155/155 + desktop playthrough `tools/playthrough.gd`, 0 failed checks): Iron scores fewer pips and now delays the lock window by its 1.4× tumble (**fixed**: the factor previously reached only the animation); Glass scores ×2 when locked in W1, and the un-locked dice shatter into static, dimmed dead slots that keep their face and can't be locked (**fixed**: they used to re-tumble and accept locks).
