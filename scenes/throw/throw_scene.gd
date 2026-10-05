@@ -51,7 +51,6 @@ func _ready() -> void:
 	add_child(_sfx_combo)
 	_apply_layout()
 	get_viewport().size_changed.connect(_apply_layout)
-	RngService.start_run()
 
 	if RunCoordinator.arc == null:
 		RunCoordinator.start_run()

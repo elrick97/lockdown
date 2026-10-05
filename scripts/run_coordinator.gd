@@ -17,7 +17,10 @@ var _run_active: bool = false
 
 ## Call once per run (ThrowScene._ready calls this on first launch or after a
 ## run-won/lost when the player restarts). Safe to call again — resets state.
-func start_run() -> void:
+## The RNG is seeded here and only here (seeded-rng spec): pass 0 to generate a
+## seed, read it back from RngService.run_seed to reproduce the run.
+func start_run(seed_value: int = 0) -> void:
+	RngService.start_run(seed_value)
 	arc = AnteArc.new(config)
 	ledger = GoldLedger.new()
 	inventory = CharmInventory.new()
