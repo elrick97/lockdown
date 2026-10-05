@@ -19,6 +19,11 @@ var _tumbler: DiceTumbler
 var _cascade: ScoreCascade
 var _countdown_left := -1.0
 var _focus_paused := false
+var _effective_window_s: float
+var _skip_button: Button
+var _trinket_row: HBoxContainer
+var _sfx_lock: AudioStreamPlayer
+var _sfx_combo: AudioStreamPlayer
 
 @onready var _tray: Control = $Tray
 @onready var _timer_bar: ColorRect = $TimerBar
@@ -33,6 +38,17 @@ var _focus_paused := false
 
 
 func _ready() -> void:
+	_skip_button = Button.new()
+	_skip_button.text = "SKIP RISK (+3g)"
+	_skip_button.add_theme_font_size_override("font_size", 40)
+	add_child(_skip_button)
+	_trinket_row = HBoxContainer.new()
+	_trinket_row.visible = false
+	add_child(_trinket_row)
+	_sfx_lock = AudioStreamPlayer.new()
+	add_child(_sfx_lock)
+	_sfx_combo = AudioStreamPlayer.new()
+	add_child(_sfx_combo)
 	_apply_layout()
 	get_viewport().size_changed.connect(_apply_layout)
 	RngService.start_run()
@@ -78,6 +94,10 @@ func _apply_layout() -> void:
 	_set_rect(_timer_bar, 0.0, 0.0, 0.0, 0.0, 40.0, 600.0, 1040.0, 635.0)
 	_set_rect(_tray, 0.0, 0.25, 1.0, 0.75, 0.0, 0.0, 0.0, 0.0)
 	_set_rect(_throw_button, 0.5, 1.0, 0.5, 1.0, -220.0, -300.0, 220.0, -120.0)
+	if _skip_button != null:
+		_set_rect(_skip_button, 0.0, 1.0, 0.5, 1.0, 40.0, -300.0, -10.0, -120.0)
+	if _trinket_row != null:
+		_set_rect(_trinket_row, 0.0, 0.0, 1.0, 0.0, 40.0, 645.0, -40.0, 780.0)
 	_cover.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_countdown_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
@@ -114,10 +134,12 @@ func _update_visuals() -> void:
 	match _controller.state:
 		ThrowController.State.TUMBLE, ThrowController.State.REROLL:
 			_timer_bar.visible = false
+			_trinket_row.visible = false
 			_tumbler.tick(get_process_delta_time())
 		ThrowController.State.LOCK_WINDOW:
 			_timer_bar.visible = true
-			var fraction := _controller.time_remaining() / _config.lock_window_duration_s
+			_trinket_row.visible = true
+			var fraction := _controller.time_remaining() / _effective_window_s
 			_timer_bar.size.x = TIMER_BAR_FULL_WIDTH * fraction
 		_:
 			pass
@@ -156,6 +178,8 @@ func _on_throw_pressed() -> void:
 	_result.text = ""
 	_result.scale = Vector2.ONE  # reset in case previous cascade was interrupted
 	_throw_button.disabled = true
+	_skip_button.visible = false
+	_rebuild_trinket_buttons()
 	_controller.start_throw()
 	_tumbler.build(_controller.faces.size())
 	_tumbler.begin_tumble(_controller.faces, _controller.locked, _tumble_duration_s())

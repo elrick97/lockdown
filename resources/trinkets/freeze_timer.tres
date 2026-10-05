@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="TrinketFreezeTimer" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/trinkets/trinket_freeze_timer.gd" id="1_freeze"]
+
+[resource]
+script = ExtResource("1_freeze")
+display_name = "Freeze Timer"
+description = "Pause the current lock window for 2 seconds."
+cost = 4
