@@ -253,6 +253,9 @@ func _on_window_started(window_index: int) -> void:
 
 func _on_die_locked(die_index: int, _window_index: int) -> void:
 	_tumbler.lock_die(die_index, _controller.faces[die_index])
+	Input.vibrate_handheld(30)
+	if _sfx_lock != null and _sfx_lock.stream != null:
+		_sfx_lock.play()
 
 
 func _on_reroll_started(_rerolled_indices: Array[int]) -> void:
