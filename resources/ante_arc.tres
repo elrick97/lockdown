@@ -6,3 +6,6 @@
 script = ExtResource("1_cfg")
 targets = Array[int]([150, 350, 700])
 throws_per_round = 3
+round_names = Array[String](["Open", "Risk", "Boss"])
+boss_antes = Array[int]([3])
+boss_window_scale = 0.5

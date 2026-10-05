@@ -238,7 +238,10 @@ func _make_controller() -> ThrowController:
 
 
 func _update_round_labels() -> void:
-	_ante_label.text = "ANTE %d / %d" % [_arc.current_ante, _ante_config.targets.size()]
+	var round_name := ""
+	if _arc.current_ante - 1 < _ante_config.round_names.size():
+		round_name = " — %s ROUND" % _ante_config.round_names[_arc.current_ante - 1].to_upper()
+	_ante_label.text = "ANTE %d / %d%s" % [_arc.current_ante, _ante_config.targets.size(), round_name]
 	_throw_label.text = "Throw %d / %d" % [_round.current_throw, _ante_config.throws_per_round]
 	_total_label.text = "Total: %d / %d" % [_round.total, _round.target]
 
