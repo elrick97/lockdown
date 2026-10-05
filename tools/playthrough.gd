@@ -275,12 +275,17 @@ func _press(button: Button) -> void:
 	button.pressed.emit()
 
 
-## Taps resolve through ThrowScene._try_lock_at (geometry + forgiveness radius), the
-## same path a real tap reaches. Synthetic events can't be used end-to-end because
-## _gui_input reads the OS cursor position, which a script must not move.
+## A real tap: press + release events pushed through the viewport, so they take the
+## full path (GUI routing → ThrowScene._gui_input → tap forgiveness → lock).
 func _tap_die(scene: Control, index: int) -> void:
-	var rect: Rect2 = scene._tumbler.die_rect(index)
-	scene._try_lock_at(rect.get_center())
+	var center: Vector2 = scene._tumbler.die_rect(index).get_center()
+	for pressed: bool in [true, false]:
+		var ev := InputEventMouseButton.new()
+		ev.button_index = MOUSE_BUTTON_LEFT
+		ev.pressed = pressed
+		ev.position = center
+		ev.global_position = center
+		root.push_input(ev, true)
 
 
 func _lock_all(scene: Control) -> void:

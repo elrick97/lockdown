@@ -151,7 +151,10 @@ func _gui_input(event: InputEvent) -> void:
 	var mb := event as InputEventMouseButton
 	if mb == null or not mb.pressed or mb.button_index != MOUSE_BUTTON_LEFT:
 		return
-	_try_lock_at(get_global_mouse_position())
+	# Use the event's own position (local to this Control) in the die rects' global
+	# space; never the OS cursor. Touch arrives as emulated mouse events, and the
+	# global transform also follows the screen-shake offset.
+	_try_lock_at(get_global_transform() * mb.position)
 
 
 ## Tap forgiveness (throw-loop spec): lock the nearest unlocked die whose

@@ -134,3 +134,25 @@ func test_carve_activated_ignores_non_spark_types() -> void:
 	scene._on_carve_activated(0, &"gem")
 	assert_eq(scene._controller.time_remaining(), before,
 			"gem/wild carve types do not affect the window timer")
+
+
+## Taps resolve from the input event's position, not the OS cursor: on a phone
+## (touch emulated as mouse) and in tests there is no cursor to read.
+func test_tap_uses_event_position_not_cursor() -> void:
+	var scene: Control = SCENE.instantiate()
+	scene._config = _fast_config()
+	scene._config.lock_window_duration_s = 5.0
+	add_child_autofree(scene)
+	scene.ante_cleared.disconnect(RunCoordinator.on_ante_cleared)
+	scene._on_throw_pressed()
+	await wait_until(func() -> bool:
+		return scene._controller.state == ThrowController.State.LOCK_WINDOW, 2.0)
+	var target: Vector2 = scene._tumbler.die_rect(2).get_center()
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = true
+	ev.position = scene.get_global_transform().affine_inverse() * target  # _gui_input gets local coords
+	ev.global_position = target
+	scene._gui_input(ev)
+	assert_true(scene._controller.locked[2], "the die under the event position locks")
+	assert_eq(scene._controller.locked.count(true), 1, "and only that die")
