@@ -50,7 +50,7 @@
 **Gate:** a stranger can play one full ante unaided and describes it as "satisfying".
 
 ### Systems
-- [ ] Shop scene: charm offers, re-roll, gold economy, interest
+- [x] Shop scene: charm offers, re-roll, gold economy, interest `add-shop-scene`
 - [ ] Charm framework: data-driven `.tres` resources + effect hook system (on_lock, on_score, on_window, on_throw)
 - [ ] 12 launch charms implemented (mix of speed/slow/value/combo archetypes per PRD §4.1)
 - [ ] Dice materials framework + Bone, Iron, Glass

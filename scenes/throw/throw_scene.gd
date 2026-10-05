@@ -3,6 +3,8 @@ extends Control
 ## ThrowController; this scene renders state, resolves taps to die indices
 ## (geometry never reaches the controller), and handles focus-loss pause.
 
+signal ante_cleared(throws_left: int)
+
 const TIMER_BAR_FULL_WIDTH := 1000.0
 
 var _config: ThrowConfig = preload("res://resources/throw_config.tres")
@@ -13,7 +15,6 @@ var _bag: DiceBag
 var _controller: ThrowController
 var _arc: AnteArc
 var _round: RoundState
-var _pending_target: int = 0
 var _tumbler: DiceTumbler
 var _countdown_left := -1.0
 var _focus_paused := false
@@ -34,21 +35,24 @@ func _ready() -> void:
 	_apply_layout()
 	get_viewport().size_changed.connect(_apply_layout)
 	RngService.start_run()
-	_bag = DiceBag.new(_config.starting_bag_size)
-	_controller = ThrowController.new(_config, _bag, RngService.get_core())
-	_controller.window_started.connect(_on_window_started)
-	_controller.die_locked.connect(_on_die_locked)
-	_controller.reroll_started.connect(_on_reroll_started)
-	_controller.resolved.connect(_on_resolved)
-	_throw_button.pressed.connect(_on_throw_pressed)
-	_timer_bar.visible = false
 
-	_arc = AnteArc.new(_ante_config)
+	if RunCoordinator.arc == null:
+		RunCoordinator.start_run()
+	_arc = RunCoordinator.arc
 	_arc.ante_advanced.connect(_on_ante_advanced)
 	_arc.run_won.connect(_on_run_won)
 	_arc.run_lost.connect(_on_run_lost)
+	ante_cleared.connect(RunCoordinator.on_ante_cleared)
 
-	_round = RoundState.new(_arc.target_for(1), _ante_config.throws_per_round)
+	_effective_window_s = _window_s_for(_arc.current_ante)
+	_bag = RunCoordinator.bag
+	_controller = _make_controller()
+	_throw_button.pressed.connect(_on_throw_pressed)
+	_skip_button.visible = _ante_config.risk_antes.has(_arc.current_ante)
+	_skip_button.pressed.connect(RunCoordinator.on_risk_skipped)
+	_timer_bar.visible = false
+
+	_round = RoundState.new(_arc.target_for(_arc.current_ante), _ante_config.throws_per_round)
 	_round.round_won.connect(_on_round_won)
 	_round.round_lost.connect(_on_round_lost)
 
@@ -148,15 +152,63 @@ func _try_lock_at(point: Vector2) -> void:
 
 
 func _on_throw_pressed() -> void:
-	if _pending_target > 0:
-		_round.reset(_pending_target)  # reuses same object; signals stay connected
-		_pending_target = 0
 	_result.text = ""
 	_throw_button.disabled = true
 	_controller.start_throw()
 	_tumbler.build(_controller.faces.size())
 	_tumbler.begin_tumble(_controller.faces, _controller.locked, _config.tumble_duration_s)
 	_status.text = "Tumbling…"
+
+
+func _rebuild_trinket_buttons() -> void:
+	for child in _trinket_row.get_children():
+		child.queue_free()
+	if RunCoordinator.trinket_inventory == null:
+		return
+	var trinkets := RunCoordinator.trinket_inventory.iter_trinkets()
+	for i in trinkets.size():
+		var t: Trinket = trinkets[i]
+		var btn := Button.new()
+		btn.text = t.display_name
+		btn.add_theme_font_size_override("font_size", 36)
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_trinket_row.add_child(btn)
+		var idx := i
+		btn.pressed.connect(func() -> void:
+			var consumed: Trinket = RunCoordinator.trinket_inventory.consume(idx)
+			if consumed != null:
+				consumed.activate(_controller)
+				_rebuild_trinket_buttons()
+		)
+
+
+func _tumble_duration_s() -> float:
+	var factor := 1.0
+	for mat_name in _controller.get_drawn_materials():
+		var path := "res://resources/dice_materials/%s.tres" % mat_name
+		if ResourceLoader.exists(path):
+			var mat := load(path) as DiceMaterial
+			if mat != null:
+				factor = maxf(factor, mat.tumble_duration_factor)
+	return _config.tumble_duration_s * factor
+
+
+func _window_s_for(ante: int) -> float:
+	if _ante_config.boss_antes.has(ante):
+		return _config.lock_window_duration_s * _ante_config.boss_window_scale
+	return _config.lock_window_duration_s
+
+
+func _make_controller() -> ThrowController:
+	var effective_config := _config.duplicate() as ThrowConfig
+	effective_config.lock_window_duration_s = _effective_window_s
+	var ctrl := ThrowController.new(effective_config, _bag, RngService.get_core(), RunCoordinator.inventory)
+	ctrl.window_started.connect(_on_window_started)
+	ctrl.die_locked.connect(_on_die_locked)
+	ctrl.reroll_started.connect(_on_reroll_started)
+	ctrl.carve_activated.connect(_on_carve_activated)
+	ctrl.resolved.connect(_on_resolved)
+	return ctrl
 
 
 func _update_round_labels() -> void:
@@ -201,13 +253,10 @@ func _on_round_lost() -> void:
 	_arc.on_round_lost()
 
 
-func _on_ante_advanced(new_ante: int, new_target: int) -> void:
-	_pending_target = new_target
-	_ante_label.text = "ANTE %d / %d" % [new_ante, _ante_config.targets.size()]
-	_throw_label.text = "Throw 0 / %d" % _ante_config.throws_per_round
-	_total_label.text = "Total: 0 / %d" % new_target
-	_status.text = "Ante %d cleared! Press THROW for ante %d." % [new_ante - 1, new_ante]
-	_throw_button.disabled = false
+func _on_ante_advanced(_new_ante: int, _new_target: int) -> void:
+	var throws_left := _ante_config.throws_per_round - _round.current_throw
+	_throw_button.disabled = true
+	ante_cleared.emit(throws_left)
 
 
 func _on_run_won() -> void:

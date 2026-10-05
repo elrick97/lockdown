@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ShopConfig" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/shop_config.gd" id="1_sc"]
+
+[resource]
+script = ExtResource("1_sc")
+base_gold_per_ante = 4
+gold_per_leftover_throw = 1
+interest_rate = 0.25
+max_gold = 40
+reroll_cost = 1
+offer_slots = 3

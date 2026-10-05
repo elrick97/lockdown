@@ -17,6 +17,7 @@ config/features=PackedStringArray("4.6", "GL Compatibility")
 [autoload]
 
 RngService="*res://scripts/rng_service.gd"
+RunCoordinator="*res://scripts/run_coordinator.gd"
 
 [display]
 

@@ -5,6 +5,10 @@ extends GutTest
 const SCENE := preload("res://scenes/throw/throw_scene.tscn")
 
 
+func before_each() -> void:
+	RunCoordinator.start_run()
+
+
 func _fast_config() -> ThrowConfig:
 	var cfg := ThrowConfig.new()
 	cfg.tumble_duration_s = 0.05
@@ -20,6 +24,24 @@ func _tiny_ante_config() -> AnteConfig:
 	return cfg
 
 
+## In tests the ante_cleared signal would normally trigger a shop scene
+## transition via RunCoordinator. Disconnect that and wire a direct round-reset
+## so multi-ante smoke tests can keep running in the same scene.
+func _patch_ante_transition(scene: Control, ante_cfg: AnteConfig) -> void:
+	scene.ante_cleared.disconnect(RunCoordinator.on_ante_cleared)
+	scene.ante_cleared.connect(func(_throws_left: int) -> void:
+		if scene._arc._run_done:
+			return
+		scene._round = RoundState.new(
+			scene._arc.target_for(scene._arc.current_ante),
+			ante_cfg.throws_per_round)
+		scene._round.round_won.connect(scene._on_round_won)
+		scene._round.round_lost.connect(scene._on_round_lost)
+		scene._throw_button.disabled = false
+		scene._update_round_labels()
+	)
+
+
 func _do_throw(scene: Control) -> void:
 	scene._on_throw_pressed()
 	await wait_until(func() -> bool:
@@ -27,10 +49,13 @@ func _do_throw(scene: Control) -> void:
 
 
 func test_full_run_reaches_terminal_state() -> void:
+	var tiny_cfg := _tiny_ante_config()
+	RunCoordinator.arc = AnteArc.new(tiny_cfg)
 	var scene: Control = SCENE.instantiate()
 	scene._config = _fast_config()
-	scene._ante_config = _tiny_ante_config()
+	scene._ante_config = tiny_cfg
 	add_child_autofree(scene)
+	_patch_ante_transition(scene, tiny_cfg)
 
 	# Throw 1: ante 1. Score > 1 always, so ante 1 clears → ante_advanced fires.
 	await _do_throw(scene)
@@ -48,23 +73,26 @@ func test_full_run_reaches_terminal_state() -> void:
 
 
 func test_ante_label_reflects_current_ante() -> void:
+	var tiny_cfg := _tiny_ante_config()
+	RunCoordinator.arc = AnteArc.new(tiny_cfg)
 	var scene: Control = SCENE.instantiate()
 	scene._config = _fast_config()
-	scene._ante_config = _tiny_ante_config()
+	scene._ante_config = tiny_cfg
 	add_child_autofree(scene)
+	_patch_ante_transition(scene, tiny_cfg)
 
 	await _do_throw(scene)
 	assert_true(scene._ante_label.text.contains("2"), "ante label shows ante 2 after first clear")
 
 
 func test_round_lost_shows_game_over() -> void:
-	var scene: Control = SCENE.instantiate()
-	scene._config = _fast_config()
-	# Target of 999999 is unreachable in one throw → round lost.
 	var cfg := AnteConfig.new()
 	var targets: Array[int] = [999999]
 	cfg.targets = targets
 	cfg.throws_per_round = 1
+	RunCoordinator.arc = AnteArc.new(cfg)
+	var scene: Control = SCENE.instantiate()
+	scene._config = _fast_config()
 	scene._ante_config = cfg
 	add_child_autofree(scene)
 

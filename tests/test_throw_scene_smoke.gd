@@ -6,6 +6,10 @@ extends GutTest
 const SCENE := preload("res://scenes/throw/throw_scene.tscn")
 
 
+func before_each() -> void:
+	RunCoordinator.start_run()
+
+
 func _fast_config() -> ThrowConfig:
 	var cfg := ThrowConfig.new()
 	cfg.tumble_duration_s = 0.05
@@ -17,6 +21,8 @@ func test_full_throw_resolves_on_screen() -> void:
 	var scene: Control = SCENE.instantiate()
 	scene._config = _fast_config()
 	add_child_autofree(scene)
+	# Prevent accidental ante-clear from triggering a shop scene transition.
+	scene.ante_cleared.disconnect(RunCoordinator.on_ante_cleared)
 	scene._on_throw_pressed()
 	assert_eq(scene._tumbler.count, 6, "tumbler built dice on throw")
 	# Let tumble finish, then tap-lock the first die through the forgiveness path.

@@ -33,3 +33,9 @@ func randf(stream: String) -> float:
 
 func shuffle(stream: String, array: Array) -> void:
 	_core.shuffle(stream, array)
+
+
+## Shuffles an array using the dedicated shop stream so offer order never
+## shifts die-face outcomes from the dice stream.
+func shuffle_shop(array: Array) -> void:
+	_core.shuffle(RngCore.STREAM_SHOP, array)
