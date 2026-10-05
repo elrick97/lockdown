@@ -45,4 +45,4 @@ rules:
     - Write scoring/partition edge cases (e.g. quad vs. two pairs, full house vs. triple+pair) as explicit scenarios.
   tasks:
     - Break tasks into chunks of max 2 focused hours (nights-and-weekends budget).
-    - A task is done only when verifiable on device or via headless test.
+    - A task is done only when verifiable locally: desktop playthrough or headless test (no device runs).

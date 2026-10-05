@@ -1,6 +1,6 @@
 # LOCKDOWN — Project Tracker
 
-> Working agreement: tasks are checked off only when playable/verifiable on device.
+> Working agreement: tasks are checked off only when playable/verifiable locally (desktop playthrough or headless test; no device runs — decided 2026-10-05).
 > A milestone is done when its **gate** passes, not when its boxes are ticked.
 > Parking lot at the bottom — good ideas go there, not into scope.
 
