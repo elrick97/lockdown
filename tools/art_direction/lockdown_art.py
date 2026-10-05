@@ -1489,3 +1489,73 @@ def godot_side_by_side(key):
     out = os.path.join(OUT, "gltf", "preview", f"dice_{key.lower()}_{slug}_compare.png")
     save_image("compare", np.concatenate([bottom, gap, top], 0), out)  # bottom-first rows: Godot on top
     return out
+
+
+# ======================================================= production dice (add-smoke-room-dice)
+PROD_DIR = os.path.join(PROJECT, "assets", "dice")
+PROD_DIRECTION = "B"  # Smoke Room, chosen 2026-10-05 (art-direction spec)
+PROD_MATERIALS = ("bone", "iron", "glass")
+PROD_CARVINGS = ("wild", "gem", "spark")
+
+
+def _tile_of(arr, value):
+    """The 256² tile of face `value` from a bottom-first atlas array."""
+    c, r = (value - 1) % ATLAS_COLS, (value - 1) // ATLAS_COLS
+    return arr[r * TILE:(r + 1) * TILE, c * TILE:(c + 1) * TILE].copy()
+
+
+def _sprite_ring(size=128):
+    u = (np.arange(size, dtype=np.float32) + 0.5) / size - 0.5
+    x, y = np.meshgrid(u, u)
+    sd = _rrect_sd(x, y, 0.46, 0.46, 0.14)
+    alpha = np.clip(1 - np.abs(sd + 0.025) / 0.022, 0, 1) ** 1.5  # soft-edged band just inside the edge
+    return np.stack([np.ones_like(x)] * 3 + [alpha], -1)  # white; tinted amber at runtime
+
+
+def _sprite_blob(size=128):
+    u = (np.arange(size, dtype=np.float32) + 0.5) / size - 0.5
+    r = np.hypot(*np.meshgrid(u, u)) / 0.5
+    alpha = 0.55 * np.clip(1 - r, 0, 1) ** 2
+    return np.stack([np.zeros_like(r)] * 3 + [alpha], -1)
+
+
+def export_production_dice():
+    """Write the in-game Smoke Room dice to res://assets/dice/ (design D1)."""
+    pal = DIRECTIONS[PROD_DIRECTION]["pal"]
+    os.makedirs(PROD_DIR, exist_ok=True)
+    written = []
+
+    def put(name, arr, noncolor=False):
+        path = os.path.join(PROD_DIR, name + ".png")
+        save_image("prod_" + name, arr, path, noncolor)
+        written.append(name + ".png")
+
+    for kind in PROD_MATERIALS:
+        alb, nrm, orm = make_die_atlas(kind, pal)
+        put(kind + "_albedo", alb)
+        put(kind + "_normal", nrm, True)
+        put(kind + "_orm", orm, True)
+        for carve in PROD_CARVINGS:
+            # Draw the carving on face 1, then cut that tile out: it carries this
+            # material's face background, so stamping it replaces pips and all.
+            calb, cnrm, corm = make_die_atlas(kind, pal, {1: carve})
+            put(f"{kind}_{carve}_albedo", _tile_of(calb, 1))
+            put(f"{kind}_{carve}_normal", _tile_of(cnrm, 1), True)
+            put(f"{kind}_{carve}_orm", _tile_of(corm, 1), True)
+    put("lock_ring", _sprite_ring())
+    put("blob_shadow", _sprite_blob())
+
+    # Mesh only: the game builds materials from DiceMaterial data (design D2).
+    reset_scene()
+    me = make_die_mesh("DieMesh")
+    ob = _link(bpy.data.objects.new("die", me))
+    bpy.context.view_layer.update()
+    for o in bpy.context.scene.objects:
+        o.select_set(o == ob)
+    bpy.context.view_layer.objects.active = ob
+    bpy.ops.export_scene.gltf(filepath=os.path.join(PROD_DIR, "die.glb"), use_selection=True,
+                              export_format="GLB", export_apply=False, export_yup=True,
+                              export_materials="NONE", export_animations=False,
+                              export_cameras=False, export_lights=False)
+    written.append("die.glb")
+    return written, base_tris(ob)

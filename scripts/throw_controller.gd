@@ -115,6 +115,12 @@ func restart_window() -> void:
 		_accumulated = 0.0
 
 
+## The dice drawn for this throw, in slot order (material + carving), for the
+## renderer's look. Empty once the throw has resolved and returned them.
+func drawn_dice() -> Array[DiceBag.Die]:
+	return _drawn.duplicate()
+
+
 ## Every slot is done: locked, or a dead slot that can never be locked.
 func _all_done() -> bool:
 	for i in locked.size():

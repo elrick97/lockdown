@@ -12,6 +12,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2] / "assets" / "art_direction"
+DICE = Path(__file__).resolve().parents[2] / "assets" / "dice"  # production dice (add-smoke-room-dice)
+DICE_MATERIALS = ("bone", "iron", "glass")
 DIE_TRIS_MAX = 300
 BUDGET_PX = {"die_": (768, 512), "felt": (1024, 1024), "rim": (1024, 1024), "charm": (512, 512),
              "table": (1024, 2048)}
@@ -69,6 +71,22 @@ def check_png(path: Path) -> list[str]:
     return [] if ok else [f"{path}: {w}x{h}"]
 
 
+def dice_budget(name: str) -> tuple[int, int]:
+    """Production dice: material atlas 768x512, carve tile 256x256, sprite 128x128."""
+    parts = name.removesuffix(".png").split("_")
+    if parts[0] in DICE_MATERIALS:
+        return (768, 512) if len(parts) == 2 else (256, 256)
+    return (128, 128)
+
+
+def check_dice_png(path: Path) -> list[str]:
+    w, h = png_size(path.read_bytes()[:24])
+    budget = dice_budget(path.name)
+    ok = (w, h) == budget
+    print(f"  {'ok ' if ok else 'BAD'} dice/{path.name}: {w}x{h} (expected {budget[0]}x{budget[1]})")
+    return [] if ok else [f"{path}: {w}x{h}, expected {budget}"]
+
+
 def main() -> int:
     errors = []
     for glb in sorted((ROOT / "gltf").glob("*.glb")):
@@ -77,6 +95,12 @@ def main() -> int:
     print("textures")
     for png in sorted((ROOT / "textures").rglob("*.png")):
         errors += check_png(png)
+    if DICE.exists():
+        print("production dice")
+        for glb in sorted(DICE.glob("*.glb")):
+            errors += check_glb(glb)
+        for png in sorted(DICE.glob("*.png")):
+            errors += check_dice_png(png)
     print(f"\n{len(errors)} problem(s)")
     for e in errors:
         print("  -", e)

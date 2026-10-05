@@ -2,45 +2,25 @@ class_name DiceTumbler
 extends Control
 ## Presentation seam for the throw-loop Tumble/Reroll phases (dice-tumble spec).
 ## Owns the visual dice and animates them to faces the RNG already decided — it
-## NEVER reads or consumes the RNG. Subclasses (2D sprite / 3D SubViewport)
-## override the rendering hooks; this base owns the shared grid layout, timing,
-## and lock state so the A/B comparison differs only in rendering.
-
-const COLS := 3
-const DIE_SIZE := Vector2(220.0, 220.0)
-const DIE_GAP := 40.0
-
-# Shared die-face look (used by renderers to draw/generate pip faces).
-const COLOR_FACE := Color(0.92, 0.92, 0.92)
-const COLOR_LOCKED := Color(0.35, 0.78, 0.42)
-const COLOR_DEAD := Color(0.38, 0.38, 0.42)  # shattered Glass: dimmed, never green
-const COLOR_PIP := Color(0.12, 0.12, 0.12)
-const PIP := {
-	"tl": Vector2(0.28, 0.28), "tc": Vector2(0.5, 0.28), "tr": Vector2(0.72, 0.28),
-	"ml": Vector2(0.28, 0.5), "c": Vector2(0.5, 0.5), "mr": Vector2(0.72, 0.5),
-	"bl": Vector2(0.28, 0.72), "bc": Vector2(0.5, 0.72), "br": Vector2(0.72, 0.72),
-}
-const FACE_PIPS := {
-	1: ["c"],
-	2: ["tl", "br"],
-	3: ["tl", "c", "br"],
-	4: ["tl", "tr", "bl", "br"],
-	5: ["tl", "tr", "c", "bl", "br"],
-	6: ["tl", "ml", "bl", "tr", "mr", "br"],
-}
+## NEVER reads or consumes the RNG. This base owns timing and the per-die state
+## (faces, locked, dead); the concrete renderer draws the dice and reports where
+## each one is on screen (die_rect) so taps resolve against what is drawn.
 
 var count: int = 0
 var faces: Array[int] = []
 var locked: Array[bool] = []
 var dead: Array[bool] = []  # dead slots keep their last face and never animate
+## Drawn dice for this throw (material + carving per slot), for the renderer's look.
+var dice: Array[DiceBag.Die] = []
 
 var _elapsed := 0.0
 var _duration := 1.0
 var _active := false
 
 
-func build(p_count: int) -> void:
-	count = p_count
+func build(p_dice: Array[DiceBag.Die]) -> void:
+	dice = p_dice.duplicate()
+	count = dice.size()
 	faces.clear()
 	locked.clear()
 	dead.clear()
@@ -50,7 +30,7 @@ func build(p_count: int) -> void:
 		dead.append(false)
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_create_visuals(p_count)
+	_create_visuals(count)
 
 
 ## The drawable area is the parent tray's size, read live — relying on this
@@ -115,44 +95,18 @@ func is_static(index: int) -> bool:
 	return locked[index] or (index < dead.size() and dead[index])
 
 
-func die_rect(index: int) -> Rect2:
-	return _die_rect_global(index)
-
-
 func _settle() -> void:
 	for i in count:
 		_render_face(i, faces[i], locked[i])
 
 
-## Local slot rect for die `index` in the centered 3-column grid.
-func _slot_rect(index: int) -> Rect2:
-	@warning_ignore("integer_division")
-	var rows := int(ceil(count / float(COLS)))
-	var grid := Vector2(
-		COLS * DIE_SIZE.x + (COLS - 1) * DIE_GAP,
-		rows * DIE_SIZE.y + (rows - 1) * DIE_GAP
-	)
-	var origin := (_area() - grid) / 2.0
-	var col := index % COLS
-	@warning_ignore("integer_division")
-	var row := index / COLS
-	return Rect2(
-		origin + Vector2(col * (DIE_SIZE.x + DIE_GAP), row * (DIE_SIZE.y + DIE_GAP)),
-		DIE_SIZE
-	)
+# --- renderer hooks -------------------------------------------------------------
 
+## Screen-space (global canvas) bounds of die `index` as drawn; taps resolve
+## against this (dice-tumble spec). Renderers must override it.
+func die_rect(_index: int) -> Rect2:
+	return Rect2()
 
-func _die_rect_global(index: int) -> Rect2:
-	var r := _slot_rect(index)
-	var p := get_parent()
-	if p is Control:
-		r.position += (p as Control).global_position
-	else:
-		r.position += global_position
-	return r
-
-
-# --- overridable rendering hooks ----------------------------------------------
 
 func _create_visuals(_p_count: int) -> void:
 	pass
@@ -166,7 +120,6 @@ func _render_face(_index: int, _face: int, _is_locked: bool) -> void:
 	pass
 
 
-## Flash die `index` to `color` and back to its current tint over `duration` s.
-## No-op in the base class; implemented by concrete renderers.
+## Flash die `index` to `color` and back to its resting look over `duration` s.
 func flash_die(_index: int, _color: Color, _duration: float) -> void:
 	pass

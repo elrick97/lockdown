@@ -184,7 +184,7 @@ func _on_throw_pressed() -> void:
 	_skip_button.visible = false
 	_rebuild_trinket_buttons()
 	_controller.start_throw()
-	_tumbler.build(_controller.faces.size())
+	_tumbler.build(_controller.drawn_dice())
 	_tumbler.begin_tumble(_controller.faces, _controller.locked, _tumble_duration_s())
 	_status.text = "Tumbling…"
 

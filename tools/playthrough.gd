@@ -47,14 +47,16 @@ func _scenario_dice_materials() -> void:
 	# Iron: -1 pip per die, slower tumble (factor 1.4).
 	var scene := await _load_run(1, func(bag: DiceBag) -> void: bag.add(&"iron", 6))
 	_press(scene._throw_button)
-	var t0 := Time.get_ticks_msec()
 	var anim_s: float = scene._tumble_duration_s()
-	await _wait(func() -> bool: return scene._controller.state == ThrowController.State.LOCK_WINDOW)
-	var tumble_s := (Time.get_ticks_msec() - t0) / 1000.0
 	var base_s: float = scene._config.tumble_duration_s
 	_check(absf(anim_s - base_s * 1.4) < 0.01, "Iron tumble animation is 1.4x base (%.2fs)" % anim_s)
-	_check(tumble_s >= base_s * 1.4 - 0.1,
-		"Iron: lock window opens after the slower tumble (measured %.2fs, expected ≥ %.2fs)" % [tumble_s, base_s * 1.4])
+	# Frame-independent: 1.8 s in, the base tumble (1.5 s) would have opened the window;
+	# Iron's 2.1 s must not have yet.
+	var t0 := Time.get_ticks_msec()
+	await _wait(func() -> bool: return Time.get_ticks_msec() - t0 >= 1800)
+	_check(scene._controller.state == ThrowController.State.TUMBLE,
+		"Iron: still tumbling 1.8 s in (window opens after the slower 2.1 s tumble)")
+	await _wait(func() -> bool: return scene._controller.state == ThrowController.State.LOCK_WINDOW)
 	await _lock_all(scene)
 	await _wait(func() -> bool: return scene._controller.state == ThrowController.State.RESOLVED)
 	var r: ThrowResult = scene._controller.last_result
@@ -70,13 +72,13 @@ func _scenario_dice_materials() -> void:
 	# One Bone die keeps the throw going into Window 2.
 	var glass_bag := func(bag: DiceBag) -> void:
 		bag.add(&"glass", 5)
-		bag.add(&"bone", 1)
+		bag.add(&"standard", 1)
 	scene = await _load_run(1, glass_bag)
 	_press(scene._throw_button)
 	await _wait(func() -> bool: return scene._controller.state == ThrowController.State.LOCK_WINDOW)
 	var ctrl_g: ThrowController = scene._controller
 	var glass_idx := _indices_of(ctrl_g, &"glass")
-	var bone_i: int = _indices_of(ctrl_g, &"bone")[0]
+	var bone_i: int = _indices_of(ctrl_g, &"standard")[0]
 	var kept: int = glass_idx[0]
 	var dead_idx := glass_idx.slice(1)
 	_tap_die(scene, kept)  # keep one Glass die, let the other four shatter
@@ -109,7 +111,7 @@ func _scenario_dice_materials() -> void:
 	var ctrl_n: ThrowController = scene._controller
 	var rerolls: Array[int] = []
 	ctrl_n.reroll_started.connect(func(idx: Array[int]) -> void: rerolls.append(idx.size()))
-	_tap_die(scene, _indices_of(ctrl_n, &"bone")[0])
+	_tap_die(scene, _indices_of(ctrl_n, &"standard")[0])
 	await _wait(func() -> bool: return ctrl_n.state == ThrowController.State.RESOLVED)
 	r = ctrl_n.last_result
 	_check(rerolls.is_empty(), "Nothing left to lock: resolves at W1 expiry, no empty re-roll or windows")
@@ -129,9 +131,9 @@ func _scenario_carving() -> void:
 		if seen.size() == 3:
 			break
 		var scene := await _load_run(1, func(bag: DiceBag) -> void:
-			bag.add_carved(&"bone", 6, &"wild", 2)
-			bag.add_carved(&"bone", 5, &"gem", 2)
-			bag.add_carved(&"bone", 4, &"spark", 2))
+			bag.add_carved(&"standard", 6, &"wild", 2)
+			bag.add_carved(&"standard", 5, &"gem", 2)
+			bag.add_carved(&"standard", 4, &"spark", 2))
 		var activated: Array[StringName] = []
 		scene._controller.carve_activated.connect(func(_i: int, t: StringName) -> void: activated.append(t))
 		_press(scene._throw_button)

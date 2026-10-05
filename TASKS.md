@@ -64,7 +64,7 @@
 - [x] Number cascade animation on scoring `add-score-cascade`
 - [x] Art direction exploration: 3 style frames, pick one `add-art-direction` *(picked B "Smoke Room", logged in PRD §5)*
 - [ ] UI layout pass: thumb-zone audit on-device
-- [ ] Placeholder → first-pass dice/charm art for slice content
+- [~] Placeholder → first-pass dice/charm art for slice content `add-smoke-room-dice` *(dice first; charm icons separate)*
 
 ### Validation
 - [ ] 5 fresh playtesters, no instructions given — log comprehension failures

@@ -1,6 +1,9 @@
-[gd_resource type="Resource" script_class="DiceMaterial" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="DiceMaterial" load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/dice_material.gd" id="1_glass"]
+[ext_resource type="Texture2D" path="res://assets/dice/glass_albedo.png" id="2_albedo"]
+[ext_resource type="Texture2D" path="res://assets/dice/glass_normal.png" id="3_normal"]
+[ext_resource type="Texture2D" path="res://assets/dice/glass_orm.png" id="4_orm"]
 
 [resource]
 script = ExtResource("1_glass")
@@ -12,3 +15,8 @@ pip_multiplier = 2
 shatter_on_reroll = true
 tumble_duration_factor = 1.0
 cost = 6
+albedo = ExtResource("2_albedo")
+normal = ExtResource("3_normal")
+orm = ExtResource("4_orm")
+transparent = true
+rim = 0.6

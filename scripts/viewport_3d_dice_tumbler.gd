@@ -1,125 +1,214 @@
 class_name Viewport3DDiceTumbler
 extends DiceTumbler
-## Spike B: 3D dice tumbling inside a SubViewport, composited into the 2D tray.
-## Cubes are textured with procedurally generated pip faces (no binary assets),
-## lit, and spun to rest over the tumble duration. Animation only — the faces
-## are already decided by the RNG (dice-tumble spec).
+## Smoke Room dice (add-smoke-room-dice): six-face atlas dice in a SubViewport,
+## composited over the tray. Each die tumbles to the orientation that puts its
+## predetermined face up, then settles with a small slot-derived yaw. Animation
+## only: nothing here reads the RNG (dice-tumble spec).
 
-const VIEW_RES := Vector2i(560, 620)  # SubViewport render resolution (recorded for the perf comparison)
-const SCRAMBLE_UNTIL := 0.50
-const SPACING := 1.55
-const CUBE := 0.95
+const TILT_DEG := 18.0  # art-direction spec: camera_tilt_deg
+const SPACING := 1.6  # world units between die centres (die = 1 unit)
+const MARGIN := 1.0  # world units of air around the grid
+const SPIN_TURNS := 3.0
+const AMBER := Color("#FF9E29")  # art-direction spec: palette_accent
+const DEAD_TINT := Color(0.45, 0.45, 0.45)
+const GLASS_GLOW := 0.35
+const KEY_LIGHT := Color("#FFDBA8")  # art-direction spec: lamp_pool key
+const DIE_SCENE := preload("res://assets/dice/die.glb")
+const RING_TEX := preload("res://assets/dice/lock_ring.png")
+const BLOB_TEX := preload("res://assets/dice/blob_shadow.png")
+## In-game face normals: Blender Z-up exported to glTF Y-up (design D4).
+const FACE_NORMAL := {
+	1: Vector3.UP, 6: Vector3.DOWN, 3: Vector3.RIGHT, 4: Vector3.LEFT,
+	2: Vector3.FORWARD, 5: Vector3.BACK,
+}
+## Each face tile's "up" (Blender +V) in mesh space, so a settled face reads upright.
+const TEX_UP := {
+	1: Vector3.FORWARD, 6: Vector3.BACK, 3: Vector3.UP, 4: Vector3.UP,
+	2: Vector3.UP, 5: Vector3.UP,
+}
+## Small fixed per-slot yaw so a settled tray doesn't look gridded (never the RNG).
+const SLOT_YAW_DEG: Array[float] = [-8.0, 6.0, -4.0, 10.0, -10.0, 4.0, 7.0, -6.0]
 
+static var _die_mesh: Mesh
+
+var _atlas := DieAtlasCache.new()
 var _container: SubViewportContainer
 var _subviewport: SubViewport
 var _camera: Camera3D
-var _dice: Array[Node3D] = []
-var _mats: Array[StandardMaterial3D] = []
+var _dice_nodes: Array[Node3D] = []
+var _mats: Array[ORMMaterial3D] = []
+var _rings: Array[MeshInstance3D] = []
 var _spin_axis: Array[Vector3] = []
-var _face_tex := {}  # value:int -> ImageTexture
-var _scramble_frame := 0
+
+
+## Orientation that puts `face` on top, upright to the camera, turned by `yaw_rad`.
+static func face_up_basis(face: int, yaw_rad: float) -> Basis:
+	var to_top := _face_to_top(face)
+	var tex_up: Vector3 = to_top * TEX_UP[face]
+	var upright := tex_up.signed_angle_to(Vector3.FORWARD, Vector3.UP)
+	return Basis(Vector3.UP, upright + yaw_rad) * to_top
+
+
+static func _face_to_top(face: int) -> Basis:
+	match face:
+		6:
+			return Basis(Vector3.RIGHT, PI)
+		3:
+			return Basis(Vector3.BACK, PI / 2.0)
+		4:
+			return Basis(Vector3.BACK, -PI / 2.0)
+		2:
+			return Basis(Vector3.RIGHT, PI / 2.0)
+		5:
+			return Basis(Vector3.RIGHT, -PI / 2.0)
+	return Basis()
+
+
+static func slot_yaw(index: int) -> float:
+	return deg_to_rad(SLOT_YAW_DEG[index % SLOT_YAW_DEG.size()])
+
+
+static func _cols_for(n: int) -> int:
+	return 3 if n <= 6 else 4
 
 
 func _create_visuals(p_count: int) -> void:
 	if _container != null:
 		_container.queue_free()
-	_dice.clear()
+	_dice_nodes.clear()
 	_mats.clear()
+	_rings.clear()
 	_spin_axis.clear()
-	if _face_tex.is_empty():
-		for v in range(1, 7):
-			_face_tex[v] = _make_face_texture(v)
+	if _die_mesh == null:
+		_die_mesh = _extract_mesh()
 
 	_container = SubViewportContainer.new()
-	_container.stretch = true
+	_container.stretch = true  # SubViewport matches the tray: full resolution, crisp dice
 	_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_container)
-
 	_subviewport = SubViewport.new()
-	_subviewport.size = VIEW_RES
 	_subviewport.transparent_bg = true
+	_subviewport.own_world_3d = true
+	_subviewport.msaa_3d = Viewport.MSAA_2X
 	_subviewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	_container.add_child(_subviewport)
 
+	var cols := _cols_for(p_count)
 	@warning_ignore("integer_division")
-	var rows := int(ceil(p_count / float(COLS)))
+	var rows := (p_count + cols - 1) / cols
 	_camera = Camera3D.new()
 	_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	_camera.size = rows * SPACING + 2.2
-	_camera.position = Vector3(0.0, 0.0, 8.0)
+	_camera.keep_aspect = Camera3D.KEEP_WIDTH
+	_camera.size = (cols - 1) * SPACING + 1.0 + 2.0 * MARGIN
+	_camera.rotation_degrees = Vector3(-(90.0 - TILT_DEG), 0.0, 0.0)
+	_camera.position = Vector3(0.0, 0.5, 0.0) + _camera.transform.basis.z * 30.0
 	_subviewport.add_child(_camera)
 
 	var light := DirectionalLight3D.new()
-	light.rotation_degrees = Vector3(-48.0, -34.0, 0.0)
+	light.rotation_degrees = Vector3(-62.0, -28.0, 0.0)
+	light.light_color = KEY_LIGHT
+	light.light_energy = 1.15
 	_subviewport.add_child(light)
-	var fill := DirectionalLight3D.new()
-	fill.light_energy = 0.4
-	fill.rotation_degrees = Vector3(40.0, 130.0, 0.0)
-	_subviewport.add_child(fill)
+	var env := Environment.new()
+	env.background_mode = Environment.BG_CLEAR_COLOR
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.55, 0.5, 0.47)
+	env.ambient_light_energy = 0.75
+	var world_env := WorldEnvironment.new()
+	world_env.environment = env
+	_subviewport.add_child(world_env)
 
-	var quad := QuadMesh.new()
-	quad.size = Vector2(CUBE, CUBE)
-	# A cube of 6 textured quads (BoxMesh UVs don't show a full texture per face).
-	# All faces share one material so the whole die reads as the current value.
-	var faces6 := [
-		Transform3D(Basis(), Vector3(0, 0, CUBE / 2.0)),                                  # +Z
-		Transform3D(Basis(Vector3.UP, PI), Vector3(0, 0, -CUBE / 2.0)),                   # -Z
-		Transform3D(Basis(Vector3.UP, PI / 2.0), Vector3(CUBE / 2.0, 0, 0)),             # +X
-		Transform3D(Basis(Vector3.UP, -PI / 2.0), Vector3(-CUBE / 2.0, 0, 0)),           # -X
-		Transform3D(Basis(Vector3.RIGHT, -PI / 2.0), Vector3(0, CUBE / 2.0, 0)),         # +Y
-		Transform3D(Basis(Vector3.RIGHT, PI / 2.0), Vector3(0, -CUBE / 2.0, 0)),         # -Y
-	]
 	for i in p_count:
-		var mat := StandardMaterial3D.new()
-		mat.albedo_texture = _face_tex[1]
-		var die := Node3D.new()
-		die.position = _world_pos(i, rows)
-		for xform in faces6:
-			var face := MeshInstance3D.new()
-			face.mesh = quad
-			face.material_override = mat
-			face.transform = xform
-			die.add_child(face)
+		@warning_ignore("integer_division")
+		var row := i / cols
+		var col := i % cols
+		var ground := Vector3((col - (cols - 1) / 2.0) * SPACING, 0.0, (row - (rows - 1) / 2.0) * SPACING)
+		_subviewport.add_child(_floor_quad(ground + Vector3(0, 0.001, 0), 1.5, BLOB_TEX, Color.WHITE, true))
+		var ring := _floor_quad(ground + Vector3(0, 0.002, 0), 1.45, RING_TEX, AMBER, false)
+		_subviewport.add_child(ring)
+		_rings.append(ring)
+		var mat := _material_for(dice[i] if i < dice.size() else null)
+		var die := MeshInstance3D.new()
+		die.mesh = _die_mesh
+		die.material_override = mat
+		die.position = ground + Vector3(0.0, 0.5, 0.0)
+		die.basis = face_up_basis(1, slot_yaw(i))
 		_subviewport.add_child(die)
-		_dice.append(die)
+		_dice_nodes.append(die)
 		_mats.append(mat)
 		# Deterministic per-die spin axis (never the gameplay RNG).
 		_spin_axis.append(Vector3(0.6 + 0.3 * (i % 2), 1.0, 0.4 + 0.2 * (i % 3)).normalized())
 
 
-func _world_pos(index: int, rows: int) -> Vector3:
-	var col := index % COLS
-	@warning_ignore("integer_division")
-	var row := index / COLS
-	var x := (col - (COLS - 1) / 2.0) * SPACING
-	var y := ((rows - 1) / 2.0 - row) * SPACING
-	return Vector3(x, y, 0.0)
+func _material_for(die: DiceBag.Die) -> ORMMaterial3D:
+	var m := ORMMaterial3D.new()
+	var dm := DiceMaterial.by_id(die.material_id) if die != null else null
+	if dm == null or dm.albedo == null:
+		return m
+	var tex := _atlas.textures_for(dm, die.carve_type, die.carved_face)
+	m.albedo_texture = tex.albedo
+	m.normal_enabled = true
+	m.normal_texture = tex.normal
+	m.orm_texture = tex.orm
+	m.roughness = 1.0  # texture values used as-is
+	m.metallic = 1.0
+	if dm.transparent:
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		# Faked Glass (art-direction spec): a faint inner glow from its own albedo.
+		m.emission_enabled = true
+		m.emission_texture = tex.albedo
+		m.emission_energy_multiplier = GLASS_GLOW
+	if dm.rim > 0.0:
+		m.rim_enabled = true
+		m.rim = dm.rim
+		m.rim_tint = 0.6
+	return m
+
+
+func _floor_quad(pos: Vector3, size: float, tex: Texture2D, tint: Color, shown: bool) -> MeshInstance3D:
+	var quad := PlaneMesh.new()
+	quad.size = Vector2(size, size)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.albedo_texture = tex
+	m.albedo_color = tint
+	quad.material = m
+	var mi := MeshInstance3D.new()
+	mi.mesh = quad
+	mi.position = pos
+	mi.visible = shown
+	return mi
+
+
+static func _extract_mesh() -> Mesh:
+	var root := DIE_SCENE.instantiate()
+	var mi := root.find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D
+	var mesh := mi.mesh
+	root.free()
+	return mesh
 
 
 func _render_tumbling(progress: float) -> void:
-	_scramble_frame += 1
 	var eased := 1.0 - pow(1.0 - progress, 3.0)
 	for i in count:
 		if is_static(i):
 			continue
-		if progress < SCRAMBLE_UNTIL:
-			_set_texture(i, 1 + (_scramble_frame / 2 + i) % 6)
-		else:
-			_set_texture(i, faces[i])
-		var angle := (1.0 - eased) * 3.0 * TAU
-		_dice[i].basis = Basis(_spin_axis[i], angle)
+		var angle := (1.0 - eased) * SPIN_TURNS * TAU
+		_dice_nodes[i].basis = face_up_basis(faces[i], slot_yaw(i)) * Basis(_spin_axis[i], angle)
 
 
 func _render_face(index: int, face: int, is_locked: bool) -> void:
-	if index < 0 or index >= _dice.size():
+	if index < 0 or index >= _dice_nodes.size():
 		return
-	_set_texture(index, face)
-	if index < dead.size() and dead[index]:
-		_mats[index].albedo_color = COLOR_DEAD
-	else:
-		_mats[index].albedo_color = COLOR_LOCKED if is_locked else Color.WHITE
-	_dice[index].basis = Basis()
+	_dice_nodes[index].basis = face_up_basis(face, slot_yaw(index))
+	_rings[index].visible = is_locked and not dead[index]
+	_mats[index].albedo_color = _resting_tint(index)
+
+
+func _resting_tint(index: int) -> Color:
+	return DEAD_TINT if dead[index] else Color.WHITE
 
 
 func flash_die(index: int, color: Color, duration: float) -> void:
@@ -127,32 +216,20 @@ func flash_die(index: int, color: Color, duration: float) -> void:
 		return
 	var t := create_tween()
 	t.tween_property(_mats[index], "albedo_color", color, duration * 0.5)
-	t.tween_property(_mats[index], "albedo_color", COLOR_LOCKED, duration * 0.5)
+	t.tween_property(_mats[index], "albedo_color", _resting_tint(index), duration * 0.5)
 
 
-func _set_texture(index: int, value: int) -> void:
-	if index >= 0 and index < _mats.size():
-		_mats[index].albedo_texture = _face_tex[clampi(value, 1, 6)]
-
-
-## Build a pip-face albedo texture for `value` (reuses the 2D pip layout).
-func _make_face_texture(value: int) -> ImageTexture:
-	var s := 128
-	var img := Image.create(s, s, false, Image.FORMAT_RGBA8)
-	img.fill(COLOR_FACE)
-	var pip_r := int(s * 0.085)
-	for key in FACE_PIPS[value]:
-		var n: Vector2 = PIP[key]
-		_draw_disc(img, Vector2(n.x * s, n.y * s), pip_r)
-	return ImageTexture.create_from_image(img)
-
-
-func _draw_disc(img: Image, center: Vector2, r: int) -> void:
-	var x0 := maxi(0, int(center.x - r))
-	var x1 := mini(img.get_width() - 1, int(center.x + r))
-	var y0 := maxi(0, int(center.y - r))
-	var y1 := mini(img.get_height() - 1, int(center.y + r))
-	for y in range(y0, y1 + 1):
-		for x in range(x0, x1 + 1):
-			if Vector2(x, y).distance_to(center) <= r:
-				img.set_pixel(x, y, COLOR_PIP)
+## Bounds of the die's projected mesh in global canvas coordinates (dice-tumble spec).
+func die_rect(index: int) -> Rect2:
+	if _camera == null or index < 0 or index >= _dice_nodes.size() or _subviewport.size == Vector2i.ZERO:
+		return Rect2()
+	var xf := _dice_nodes[index].global_transform
+	var box := _die_mesh.get_aabb()
+	var to_canvas := _container.size / Vector2(_subviewport.size)
+	var r := Rect2()
+	for c in 8:
+		var corner := box.position + box.size * Vector3(c & 1, (c >> 1) & 1, (c >> 2) & 1)
+		var p := _camera.unproject_position(xf * corner) * to_canvas
+		r = Rect2(p, Vector2.ZERO) if c == 0 else r.expand(p)
+	r.position += _container.global_position
+	return r
