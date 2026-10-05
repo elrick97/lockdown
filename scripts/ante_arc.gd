@@ -21,6 +21,10 @@ func target_for(ante: int) -> int:
 	return _config.targets[ante - 1]
 
 
+func is_run_done() -> bool:
+	return _run_done
+
+
 func on_round_won() -> void:
 	if _run_done:
 		return
@@ -37,3 +41,16 @@ func on_round_lost() -> void:
 		return
 	_run_done = true
 	run_lost.emit()
+
+
+## Silently advances the ante (no ante_advanced signal). RunCoordinator handles
+## the scene transition directly so there is no double-transition with
+## ThrowScene's ante_cleared path.
+func skip_round() -> void:
+	if _run_done:
+		return
+	if current_ante >= _ante_count:
+		_run_done = true
+		run_won.emit()
+	else:
+		current_ante += 1

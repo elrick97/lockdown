@@ -9,3 +9,5 @@ throws_per_round = 3
 round_names = Array[String](["Open", "Risk", "Boss"])
 boss_antes = Array[int]([3])
 boss_window_scale = 0.5
+risk_antes = Array[int]([2])
+skip_reward_gold = 3
