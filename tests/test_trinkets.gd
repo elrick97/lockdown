@@ -122,3 +122,14 @@ func test_force_reroll_no_op_outside_window() -> void:
 	_controller.reroll_started.connect(func(_a: Array[int]) -> void: fired = true)
 	_controller.force_reroll_unlocked()
 	assert_false(fired, "reroll_started must not fire outside LOCK_WINDOW")
+
+
+func test_freeze_timer_early_in_window_is_capped() -> void:
+	var cfg := ThrowConfig.new()
+	cfg.lock_window_duration_s = 2.5
+	var ctrl := ThrowController.new(cfg, DiceBag.new(6), RngCore.new(5))
+	ctrl.start_throw()
+	ctrl.tick(ctrl.tumble_duration())
+	ctrl.tick(0.5)
+	(load("res://resources/trinkets/freeze_timer.tres") as Trinket).activate(ctrl)
+	assert_almost_eq(ctrl.time_remaining(), 2.5, 0.001, "2.0 s + 2 s is capped at the 2.5 s window")

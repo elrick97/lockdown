@@ -217,3 +217,13 @@ func test_wild_pips_apply_material() -> void:
 	var glass := _engine.score(_wild_result([6, 6, 1, 2, 3], [2], [0, 0, 0, 0, 0], [1, 1, 2, 1, 1]), _config, WINDOW_S)
 	assert_eq(glass.pips, 6 + 6 + 12 + 2 + 3, "Glass Wild as a 6 adds 6 × 2 = 12")
 
+
+# --- Spark extension is capped at the full window (clarify-window-extension-cap) ---
+
+func test_spark_early_in_window_is_capped() -> void:
+	var ctrl := _make_ctrl_with_carved_die(6, &"spark")
+	ctrl.start_throw()
+	ctrl.tick(ctrl.tumble_duration())
+	ctrl.tick(0.2)
+	ctrl.freeze_window(0.5)  # what ThrowScene does when a Spark face locks
+	assert_almost_eq(ctrl.time_remaining(), 2.5, 0.001, "2.3 s + 0.5 s is capped at the 2.5 s window")
