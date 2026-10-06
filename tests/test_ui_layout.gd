@@ -134,6 +134,16 @@ func test_timer_and_plaques_use_the_kit() -> void:
 	assert_eq(shop._gold_panel.theme_type_variation, &"PlaquePanel")
 
 
+func test_overlay_is_drifting_fog_not_grain() -> void:
+	var start: Control = START_SCENE.instantiate()
+	add_child_autofree(start)
+	var mat := _overlay_of(start).rect.material as ShaderMaterial
+	assert_same(mat.get_shader_parameter("noise_tex"), SmokeOverlay.noise_texture(), "shared fog noise")
+	var names: Array = mat.shader.get_shader_uniform_list().map(func(u: Dictionary) -> String: return u.name)
+	assert_false(names.has("grain"), "no per-frame grain pass")
+	assert_true(names.has("fog_drift") and names.has("vignette"))
+
+
 func test_felt_fills_the_tray_behind_the_dice() -> void:
 	var scene := _throw_scene()
 	await wait_frames(2)

@@ -37,6 +37,7 @@ func _run() -> void:
 	await _scenario_risk_skip()
 	await _scenario_juice()
 	await _scenario_charm_icons()
+	await _scenario_fog()
 	await _scenario_run_flow()
 	_report.append("\n%d check(s) failed" % _failures)
 	var f := FileAccess.open(OUT_DIR + "report.md", FileAccess.WRITE)
@@ -366,6 +367,32 @@ func _scenario_charm_icons() -> void:
 	await process_frame
 	_check(current_scene._owned_icons.get_child_count() == 5, "Shop shows the build as five sockets")
 	await _screenshot("charm_shop")
+
+
+func _scenario_fog() -> void:
+	_section("add-smoke-fog-overlay")
+	change_scene_to_file(START_SCENE)
+	for i in 20:
+		await process_frame
+	# Bottom-left margin, where the fog is densest: frames ~1/24 s apart may differ only
+	# by slow drift. Per-pixel grain made neighbouring frames differ by ~7% per pixel.
+	var region := Rect2i(Vector2i(0, int(root.size.y * 0.85)), Vector2i(int(root.size.x * 0.25), int(root.size.y * 0.15)))
+	var a := root.get_texture().get_image().get_region(region)
+	var t0 := Time.get_ticks_msec()
+	await _wait(func() -> bool: return Time.get_ticks_msec() - t0 >= 42)
+	await process_frame
+	var b := root.get_texture().get_image().get_region(region)
+	var diff := 0.0
+	var n := 0
+	for y in range(0, a.get_height(), 3):
+		for x in range(0, a.get_width(), 3):
+			var ca := a.get_pixel(x, y)
+			var cb := b.get_pixel(x, y)
+			diff += absf(ca.r - cb.r) + absf(ca.g - cb.g) + absf(ca.b - cb.b)
+			n += 3
+	var mean := diff / maxf(n, 1)
+	_check(mean < 0.004, "Edge fog does not flicker (mean change %.4f per channel in ~1/24 s)" % mean)
+	await _screenshot("fog_start")
 
 
 # ----------------------------------------------------------------- helpers

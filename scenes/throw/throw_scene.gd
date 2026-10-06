@@ -144,6 +144,7 @@ func _ready() -> void:
 	_build_charm_row()
 
 	_update_round_labels()
+	_hud.reset(_scoring_config.heat_max)  # idle HEAT: what a fast lock would earn
 	_status.text = "Tap THROW to roll the dice"
 
 
@@ -522,7 +523,7 @@ func _build_charm_row() -> void:
 			slot.pressed.connect(func() -> void:
 				_status.text = "%s: %s" % [charm.display_name, charm.description])
 		else:
-			slot.text = "·"
+			slot.text = ""  # an empty, dimmed socket says "free slot" on its own
 			slot.disabled = true
 		_charm_row.add_child(slot)
 		_charm_slots.append(slot)
