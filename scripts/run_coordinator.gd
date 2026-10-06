@@ -20,6 +20,11 @@ signal cashout_ready(cashout: Dictionary)
 var last_cashout: Dictionary = {}
 ## Run summary for the end-of-run panel (run-flow spec). Presentation data only.
 var best_throw: int = 0
+## Best combo type seen this run (ComboType order is the rank; -1 = none), rounds
+## cleared by play, and all gold earned (presentation only, add-run-summary-stats).
+var best_combo_type: int = -1
+var rounds_cleared: int = 0
+var gold_earned: int = 0
 
 
 ## Call once per run (ThrowScene._ready calls this on first launch or after a
@@ -34,6 +39,9 @@ func start_run(seed_value: int = 0) -> void:
 	trinket_inventory = TrinketInventory.new()
 	bag = DiceBag.new(_throw_config.starting_bag_size)
 	best_throw = 0
+	best_combo_type = -1
+	rounds_cleared = 0
+	gold_earned = 0
 	_run_active = true
 
 
@@ -42,6 +50,20 @@ func start_run(seed_value: int = 0) -> void:
 func new_run(seed_value: int = 0) -> void:
 	end_run()
 	start_run(seed_value)
+
+
+## Keeps the best combo of the run (higher ComboType = better, combo-scoring spec).
+func record_combos(combos: Array) -> void:
+	for c in combos:
+		best_combo_type = maxi(best_combo_type, int(c.type))
+
+
+func best_combo_name() -> String:
+	return "—" if best_combo_type < 0 else config_scoring().get_combo_name(best_combo_type)
+
+
+func config_scoring() -> ScoringConfig:
+	return preload("res://resources/scoring_config.tres")
 
 
 ## Called when a throw's cascade finishes; keeps the run's best single throw.
@@ -62,6 +84,7 @@ func on_ante_cleared(throws_left: int) -> void:
 	var earned := shop_config.base_gold_per_ante \
 		+ throws_left * shop_config.gold_per_leftover_throw
 	ledger.earn(earned)
+	rounds_cleared += 1
 	_finish_cashout("ROUND CLEARED", before, lines)
 
 
@@ -74,6 +97,7 @@ func _finish_cashout(title: String, before: int, lines: Array) -> void:
 	lines.append({"text": "Interest (%d%% of %d, max %d)" % [roundi(shop_config.interest_rate * 100.0),
 		pre_interest, shop_config.max_gold], "gold": interest})
 	last_cashout = {"title": title, "lines": lines, "before": before, "after": ledger.gold}
+	gold_earned += maxi(0, ledger.gold - before)
 	cashout_ready.emit(last_cashout)
 
 

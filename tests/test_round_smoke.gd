@@ -71,7 +71,7 @@ func test_full_run_reaches_terminal_state() -> void:
 	# Throw 3: ante 3. Score > 1 → run_won fires.
 	await _do_throw(scene)
 	assert_true(scene._arc._run_done, "run is done after clearing all antes")
-	assert_true(scene._status.text.contains("WIN"), "status shows win message")
+	assert_true(scene._end_title.text.contains("RUN WON"), "end panel shows the win")
 	assert_true(scene._throw_button.disabled, "throw button disabled at run end")
 
 
@@ -101,5 +101,5 @@ func test_round_lost_shows_game_over() -> void:
 
 	await _do_throw(scene)
 	assert_true(scene._arc._run_done, "run done after losing")
-	assert_true(scene._status.text.contains("GAME OVER"), "status shows game over")
+	assert_true(scene._end_title.text.contains("GAME OVER"), "end panel shows game over")
 	assert_true(scene._throw_button.disabled, "throw button disabled after loss")

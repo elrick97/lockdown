@@ -72,6 +72,9 @@ var _end_build: HBoxContainer
 var _end_score: Label
 var _end_score_caption: Label
 var _end_build_caption: Label
+var _end_result: Label
+var _end_seed: Label
+var _end_empty_build: Label
 var _charm_row: HBoxContainer
 var _charm_slots: Array[Button] = []
 var _felt: TextureRect
@@ -290,7 +293,10 @@ func _apply_layout() -> void:
 		_set_rect(_end_title, 0.0, 0.0, 1.0, 0.0, 40.0, 330.0, -40.0, 560.0)
 		_set_rect(_end_score_caption, 0.0, 0.0, 1.0, 0.0, 100.0, 560.0, -100.0, 610.0)
 		_set_rect(_end_score, 0.0, 0.0, 1.0, 0.0, 100.0, 600.0, -100.0, 760.0)
-		_set_rect(_end_summary, 0.0, 0.0, 1.0, 0.0, 100.0, 790.0, -100.0, 1010.0)
+		_set_rect(_end_result, 0.0, 0.0, 1.0, 0.0, 100.0, 755.0, -100.0, 815.0)
+		_set_rect(_end_summary, 0.0, 0.0, 1.0, 0.0, 100.0, 830.0, -100.0, 1010.0)
+		_set_rect(_end_seed, 0.0, 0.0, 1.0, 0.0, 100.0, 1015.0, -100.0, 1070.0)
+		_set_rect(_end_empty_build, 0.0, 0.0, 1.0, 0.0, 100.0, 1190.0, -100.0, 1300.0)
 		_set_rect(_end_build_caption, 0.0, 0.0, 1.0, 0.0, 100.0, 1110.0, -100.0, 1160.0)
 		_set_rect(_new_run_button, 0.0, 1.0, 0.5, 1.0, 40.0, -300.0, -20.0, -120.0)
 		_set_rect(_menu_button, 0.5, 1.0, 1.0, 1.0, 20.0, -300.0, -40.0, -120.0)
@@ -592,6 +598,7 @@ func _on_resolved(result: ThrowResult) -> void:
 	_mark_dead_slots()
 	_tumbler.reveal(_controller.faces, _controller.locked)
 	var breakdown := _scoring.score(result, _scoring_config, _effective_window_s, false, RunCoordinator.inventory)
+	RunCoordinator.record_combos(breakdown.combos)
 	if not breakdown.combos.is_empty() and _sfx_combo != null and _sfx_combo.stream != null:
 		_sfx_combo.play()
 	var old_total := _round.total
@@ -840,8 +847,15 @@ func _build_end_panel() -> void:
 	_end_score.theme_type_variation = &"HudValue"
 	_end_score.add_theme_color_override("font_outline_color", UiStyle.OUTLINE)
 	_end_score.add_theme_constant_override("outline_size", 14)
-	_end_summary = _end_label(42)
-	_end_summary.add_theme_constant_override("line_spacing", 10)
+	_end_result = _end_label(38)
+	_end_summary = _end_label(36)
+	_end_summary.add_theme_constant_override("line_spacing", 8)
+	_end_seed = _end_label(30)
+	_end_seed.add_theme_color_override("font_color", UiStyle.MUTED)
+	UiStyle.pickable(_end_seed, _copy_seed)
+	_end_empty_build = _end_label(34)
+	_end_empty_build.add_theme_color_override("font_color", UiStyle.MUTED)
+	_end_empty_build.text = "No charms this run"
 	_end_build_caption = _end_label(30)
 	_end_build_caption.add_theme_color_override("font_color", UiStyle.MUTED)
 	_end_build_caption.text = "YOUR BUILD"
@@ -924,12 +938,28 @@ func _show_end_panel(won: bool) -> void:
 	_end_title.text = "RUN WON" if won else "GAME OVER"
 	_end_title.add_theme_color_override("font_color", UiStyle.AMBER if won else UiStyle.CREAM)
 	_end_score_caption.text = "FINAL TOTAL  /  TARGET %d" % _round.target
-	_end_summary.text = "Ante %d / %d   ·   Best throw %d\nSeed %d" % [
-		_arc.current_ante, _ante_config.targets.size(), RunCoordinator.best_throw, RngService.run_seed]
+	var margin := _round.total - _round.target
+	_end_result.text = ("BEAT BY %d" % margin) if won else ("MISSED BY %d" % -margin)
+	_end_result.add_theme_color_override("font_color", UiStyle.AMBER if won else Color(0.85, 0.42, 0.36))
+	_end_summary.text = "Ante %d / %d · Best throw %d\nBest combo: %s\nRounds cleared %d · Gold earned %d" % [
+		_arc.current_ante, _ante_config.targets.size(), RunCoordinator.best_throw,
+		RunCoordinator.best_combo_name(), RunCoordinator.rounds_cleared, RunCoordinator.gold_earned]
+	_end_seed.text = "Seed %d · tap to copy" % RngService.run_seed
+	var no_charms := RunCoordinator.inventory.iter_charms().is_empty()
+	_end_build.visible = not no_charms
+	_end_empty_build.visible = no_charms
+	_status.text = ""  # the end panel says it; nothing stale behind it
+	_intro.visible = false
 	_skip_button.visible = false
 	_throw_button.visible = false  # NEW RUN / MENU are the only actions now
 	_end_panel.visible = true
 	_play_end_reveal(won)
+
+
+## Tap the seed to copy it (run-flow spec): share or replay a run.
+func _copy_seed() -> void:
+	DisplayServer.clipboard_set(str(RngService.run_seed))
+	_hud.float_text("Copied", _end_seed.get_global_rect().get_center(), UiStyle.CREAM, 40, 60.0)
 
 
 ## The end-of-run reveal: the title slams in (win: heavy shake and sparks; loss: a
