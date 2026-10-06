@@ -17,7 +17,7 @@ The game has no start and no end. It opens straight into ante 1 with no explanat
 - `run-flow`: start screen, how-to, end-of-run panel, new run / menu transitions, run summary.
 
 ### Modified Capabilities
-- `ante-arc`: run end hands off to the end-of-run panel, and a new run starts from it. Rules for winning and losing are unchanged.
+- None. Win/lose rules (`ante-arc`) are unchanged; the new flow only reacts to them.
 
 ## Impact
 

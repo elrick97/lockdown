@@ -9,6 +9,7 @@ extends SceneTree
 const OUT_DIR := "res://build/playthrough/"
 const THROW_SCENE := "res://scenes/throw/throw_scene.tscn"
 const SHOP_SCENE := "res://scenes/shop/shop_scene.tscn"
+const START_SCENE := "res://scenes/start/start_scene.tscn"
 const TIMEOUT_S := 10.0
 
 # Autoloads are looked up at runtime: -s scripts compile before autoload names exist.
@@ -35,6 +36,7 @@ func _run() -> void:
 	await _scenario_boss()
 	await _scenario_risk_skip()
 	await _scenario_juice()
+	await _scenario_run_flow()
 	_report.append("\n%d check(s) failed" % _failures)
 	var f := FileAccess.open(OUT_DIR + "report.md", FileAccess.WRITE)
 	f.store_string("\n".join(_report) + "\n")
@@ -242,6 +244,39 @@ func _scenario_risk_skip() -> void:
 	await _screenshot("risk_skip_shop")
 	var no_skip := await _load_run(1, Callable())
 	_check(not no_skip._skip_button.visible, "No SKIP button on a non-Risk ante")
+
+
+func _scenario_run_flow() -> void:
+	_section("add-run-flow")
+	change_scene_to_file(START_SCENE)
+	await process_frame
+	await process_frame
+	_check(current_scene.scene_file_path == START_SCENE, "Game opens on the start screen")
+	_check(current_scene._how_to.text.split("\n").size() <= 4, "How-to is at most four lines")
+	await _screenshot("start_screen")
+	_press(current_scene._play_button)
+	await _wait(func() -> bool: return current_scene != null and current_scene.scene_file_path == THROW_SCENE)
+	await process_frame
+	_check(_rc.arc.current_ante == 1 and _rc.ledger.gold == 0, "PLAY starts a fresh run at ante 1")
+	var scene: Control = current_scene
+	_rc.record_throw(57)
+	_rc.arc.on_round_lost()  # setup: end the run as a loss
+	_check(scene._end_panel.visible and "GAME OVER" in scene._end_title.text, "Game over shows the end panel")
+	_check("57" in scene._end_summary.text, "End panel lists the best throw")
+	await _screenshot("end_panel_game_over")
+	var old_seed: int = _rng.run_seed
+	_press(scene._new_run_button)
+	await _wait(func() -> bool: return current_scene != null and current_scene != scene)
+	await process_frame
+	_check(current_scene.scene_file_path == THROW_SCENE and not current_scene._end_panel.visible,
+		"NEW RUN reloads the throw screen without the panel")
+	_check(_rc.arc.current_ante == 1 and _rc.best_throw == 0 and _rng.run_seed != old_seed,
+		"NEW RUN resets the run and reseeds")
+	scene = current_scene
+	_rc.arc.on_round_lost()
+	_press(scene._menu_button)
+	await _wait(func() -> bool: return current_scene != null and current_scene.scene_file_path == START_SCENE)
+	_check(current_scene.scene_file_path == START_SCENE, "MENU returns to the start screen")
 
 
 func _scenario_juice() -> void:

@@ -7,6 +7,7 @@ signal ante_cleared(throws_left: int)
 
 const TIMER_BAR_FULL_WIDTH := 1000.0
 const MAX_COUNTDOWN_STEP_S := 0.1
+const START_SCENE := "res://scenes/start/start_scene.tscn"
 
 var _config: ThrowConfig = preload("res://resources/throw_config.tres")
 var _scoring_config: ScoringConfig = preload("res://resources/scoring_config.tres")
@@ -25,6 +26,11 @@ var _skip_button: Button
 var _trinket_row: HBoxContainer
 var _sfx_lock: AudioStreamPlayer
 var _sfx_combo: AudioStreamPlayer
+var _end_panel: ColorRect
+var _end_title: Label
+var _end_summary: Label
+var _new_run_button: Button
+var _menu_button: Button
 
 @onready var _tray: Control = $Tray
 @onready var _timer_bar: ColorRect = $TimerBar
@@ -50,6 +56,7 @@ func _ready() -> void:
 	add_child(_sfx_lock)
 	_sfx_combo = AudioStreamPlayer.new()
 	add_child(_sfx_combo)
+	_build_end_panel()
 	_apply_layout()
 	get_viewport().size_changed.connect(_apply_layout)
 
@@ -99,6 +106,12 @@ func _apply_layout() -> void:
 		_set_rect(_skip_button, 0.5, 1.0, 0.5, 1.0, -220.0, -440.0, 220.0, -320.0)
 	if _trinket_row != null:
 		_set_rect(_trinket_row, 0.0, 0.0, 1.0, 0.0, 40.0, 645.0, -40.0, 780.0)
+	if _end_panel != null:
+		_end_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_set_rect(_end_title, 0.0, 0.0, 1.0, 0.0, 40.0, 620.0, -40.0, 760.0)
+		_set_rect(_end_summary, 0.0, 0.0, 1.0, 0.0, 40.0, 800.0, -40.0, 1100.0)
+		_set_rect(_new_run_button, 0.0, 1.0, 0.5, 1.0, 40.0, -300.0, -20.0, -120.0)
+		_set_rect(_menu_button, 0.5, 1.0, 1.0, 1.0, 20.0, -300.0, -40.0, -120.0)
 	_cover.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_countdown_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
@@ -305,6 +318,7 @@ func _on_resolved(result: ThrowResult) -> void:
 
 
 func _on_cascade_finished() -> void:
+	RunCoordinator.record_throw(_cascade.final_score)
 	_round.add_score(_cascade.final_score)
 	if _round.is_done:
 		return  # _on_round_won/lost → _on_ante_advanced/_on_run_* already updated labels + button
@@ -332,12 +346,66 @@ func _on_run_won() -> void:
 	_update_round_labels()
 	_status.text = "YOU WIN!"
 	_throw_button.disabled = true
+	_show_end_panel(true)
 
 
 func _on_run_lost() -> void:
 	_update_round_labels()
 	_status.text = "GAME OVER."
 	_throw_button.disabled = true
+	_show_end_panel(false)
+
+
+## End-of-run panel (run-flow spec): result, summary, NEW RUN / MENU. Sits above the
+## tray and below the focus cover, so focus loss still covers everything.
+func _build_end_panel() -> void:
+	_end_panel = ColorRect.new()
+	_end_panel.color = Color(0.02, 0.01, 0.01, 0.86)
+	_end_panel.visible = false
+	add_child(_end_panel)
+	move_child(_end_panel, _cover.get_index())
+	_end_title = _end_label(76)
+	_end_summary = _end_label(46)
+	_new_run_button = _end_button("NEW RUN")
+	_new_run_button.pressed.connect(_on_new_run_pressed)
+	_menu_button = _end_button("MENU")
+	_menu_button.pressed.connect(_on_menu_pressed)
+
+
+func _end_label(font_size: int) -> Label:
+	var l := Label.new()
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", font_size)
+	_end_panel.add_child(l)
+	return l
+
+
+func _end_button(text: String) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.add_theme_font_size_override("font_size", 44)
+	_end_panel.add_child(b)
+	return b
+
+
+func _show_end_panel(won: bool) -> void:
+	_end_title.text = "RUN WON" if won else "GAME OVER"
+	_end_summary.text = "Ante %d / %d\nBest throw  %d\nFinal total  %d / %d" % [
+		_arc.current_ante, _ante_config.targets.size(), RunCoordinator.best_throw,
+		_round.total, _round.target]
+	_skip_button.visible = false
+	_end_panel.visible = true
+
+
+func _on_new_run_pressed() -> void:
+	RunCoordinator.new_run()
+	get_tree().change_scene_to_file("res://scenes/throw/throw_scene.tscn")
+
+
+func _on_menu_pressed() -> void:
+	RunCoordinator.end_run()
+	get_tree().change_scene_to_file(START_SCENE)
 
 
 func _notification(what: int) -> void:

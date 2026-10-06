@@ -13,6 +13,8 @@ var shop_config: ShopConfig = preload("res://resources/shop_config.tres")
 var _throw_config: ThrowConfig = preload("res://resources/throw_config.tres")
 
 var _run_active: bool = false
+## Run summary for the end-of-run panel (run-flow spec). Presentation data only.
+var best_throw: int = 0
 
 
 ## Call once per run (ThrowScene._ready calls this on first launch or after a
@@ -26,7 +28,20 @@ func start_run(seed_value: int = 0) -> void:
 	inventory = CharmInventory.new()
 	trinket_inventory = TrinketInventory.new()
 	bag = DiceBag.new(_throw_config.starting_bag_size)
+	best_throw = 0
 	_run_active = true
+
+
+## A fresh run from the start screen or the end-of-run panel (run-flow spec):
+## the only reset path, so PLAY and NEW RUN can't drift apart.
+func new_run(seed_value: int = 0) -> void:
+	end_run()
+	start_run(seed_value)
+
+
+## Called when a throw's cascade finishes; keeps the run's best single throw.
+func record_throw(score: int) -> void:
+	best_throw = maxi(best_throw, score)
 
 
 ## Called by ThrowScene when ante_advanced fires. Credits gold, applies
