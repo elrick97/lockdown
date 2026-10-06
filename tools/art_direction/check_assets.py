@@ -16,6 +16,11 @@ DICE = Path(__file__).resolve().parents[2] / "assets" / "dice"  # production dic
 DICE_MATERIALS = ("bone", "iron", "glass")
 TABLE = Path(__file__).resolve().parents[2] / "assets" / "table"  # add-smoke-room-table
 TABLE_PX = {"felt.png": (1024, 1024), "backdrop.png": (1024, 2048)}
+UI = Path(__file__).resolve().parents[2] / "assets" / "ui"  # add-smoke-room-ui-art
+UI_PX = {f"button_{k}_{s}.png": (256, 128) for k in ("primary", "secondary")
+         for s in ("normal", "pressed", "disabled")}
+UI_PX.update({"panel.png": (256, 256), "plaque.png": (256, 96), "socket.png": (160, 160),
+              "timer_frame.png": (512, 56), "timer_fill.png": (64, 32)})
 DIE_TRIS_MAX = 300
 BUDGET_PX = {"die_": (768, 512), "felt": (1024, 1024), "rim": (1024, 1024), "charm": (512, 512),
              "table": (1024, 2048)}
@@ -111,6 +116,17 @@ def main() -> int:
             print(f"  {'ok ' if ok else 'BAD'} table/{png.name}: {w}x{h}")
             if not ok:
                 errors.append(f"{png}: {w}x{h}, expected {TABLE_PX.get(png.name)}")
+    if UI.exists():
+        print("production UI kit")
+        found = {p.name for p in UI.glob("*.png")}
+        for name in sorted(set(UI_PX) - found):
+            errors.append(f"ui/{name}: missing")
+        for png in sorted(UI.glob("*.png")):
+            w, h = png_size(png.read_bytes()[:24])
+            ok = (w, h) == UI_PX.get(png.name)
+            print(f"  {'ok ' if ok else 'BAD'} ui/{png.name}: {w}x{h}")
+            if not ok:
+                errors.append(f"{png}: {w}x{h}, expected {UI_PX.get(png.name)}")
     print(f"\n{len(errors)} problem(s)")
     for e in errors:
         print("  -", e)

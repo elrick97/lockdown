@@ -55,6 +55,7 @@ var _gold_panel: Panel
 func _ready() -> void:
 	theme = UiStyle.theme()
 	_gold_panel = Panel.new()
+	_gold_panel.theme_type_variation = &"PlaquePanel"
 	_gold_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_gold_panel)
 	move_child(_gold_panel, 0)

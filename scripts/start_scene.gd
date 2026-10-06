@@ -16,6 +16,7 @@ const HOW_TO := [
 var _mark: Control
 var _how_to: Label
 var _play_button: Button
+var _how_to_card: Panel
 
 
 func _ready() -> void:
@@ -28,6 +29,9 @@ func _ready() -> void:
 	_mark.draw.connect(_draw_mark)
 	add_child(_mark)
 
+	_how_to_card = Panel.new()
+	_how_to_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_how_to_card)
 	_how_to = Label.new()
 	_how_to.text = "\n".join(HOW_TO)
 	_how_to.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -49,7 +53,8 @@ func _ready() -> void:
 func _apply_layout() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_place(_mark, 0.5, 0.0, 0.5, 0.0, -220.0, 300.0, 220.0, 740.0)
-	_place(_how_to, 0.0, 0.0, 1.0, 0.0, 80.0, 900.0, -80.0, 1460.0)
+	_place(_how_to_card, 0.0, 0.0, 1.0, 0.0, 50.0, 860.0, -50.0, 1500.0)
+	_place(_how_to, 0.0, 0.0, 1.0, 0.0, 100.0, 900.0, -100.0, 1460.0)
 	_place(_play_button, 0.5, 1.0, 0.5, 1.0, -280.0, -420.0, 280.0, -200.0)
 	_mark.queue_redraw()
 

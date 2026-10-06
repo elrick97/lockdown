@@ -10,3 +10,4 @@ assets/art_direction/**/*.blend filter=lfs diff=lfs merge=lfs -text
 assets/dice/*.png filter=lfs diff=lfs merge=lfs -text
 assets/dice/*.glb filter=lfs diff=lfs merge=lfs -text
 assets/table/*.png filter=lfs diff=lfs merge=lfs -text
+assets/ui/*.png filter=lfs diff=lfs merge=lfs -text

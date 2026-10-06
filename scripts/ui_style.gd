@@ -1,15 +1,22 @@
 class_name UiStyle
 extends RefCounted
-## The Smoke Room UI theme (ui-theme spec), built once from the art-direction
-## palette and shared by every screen: set `theme = UiStyle.theme()` on a root.
+## The Smoke Room UI theme (ui-theme spec). Chrome comes from the rendered UI kit in
+## res://assets/ui/ as 9-patch StyleBoxTextures; colours are the art-direction palette.
+## Shared by every screen: set `theme = UiStyle.theme()` on a root.
 
-const PANEL := Color(0.055, 0.031, 0.027, 0.9)  # #0E0807 at 90%
 const BRASS := Color("#CC994C")  # palette_ui_line
 const AMBER := Color("#FF9E29")  # palette_accent
 const CREAM := Color("#F2E6D0")
 const MUTED := Color("#8A7A64")
-const OXBLOOD := Color("#5C0D0F")  # palette_felt
-const BUTTON := Color("#1A0F0C")
+const OUTLINE := Color("#1A0B06")
+const UI_DIR := "res://assets/ui/"
+## 9-patch margins in px, matching the kit renders (art-direction spec).
+const MARGIN_BUTTON := 40
+const MARGIN_PANEL := 48
+const MARGIN_PLAQUE := 32
+const MARGIN_SOCKET := 52
+const TIMER_FRAME_MARGINS := Vector2i(36, 26)
+const TIMER_FILL_MARGINS := Vector2i(16, 14)
 
 static var _theme: Theme
 
@@ -20,48 +27,80 @@ static func theme() -> Theme:
 	return _theme
 
 
-static func _box(bg: Color, border: Color, width: int, radius: int, margin: float) -> StyleBoxFlat:
-	var b := StyleBoxFlat.new()
-	b.bg_color = bg
-	b.border_color = border
-	b.set_border_width_all(width)
-	b.set_corner_radius_all(radius)
-	b.set_content_margin_all(margin)
-	b.anti_aliasing = true
+static func kit(piece: String) -> Texture2D:
+	return load(UI_DIR + piece + ".png") as Texture2D
+
+
+static func box(piece: String, margin: int, content := Vector2(24.0, 16.0),
+		modulate := Color.WHITE) -> StyleBoxTexture:
+	var b := StyleBoxTexture.new()
+	b.texture = kit(piece)
+	b.set_texture_margin_all(margin)
+	b.content_margin_left = content.x
+	b.content_margin_right = content.x
+	b.content_margin_top = content.y
+	b.content_margin_bottom = content.y
+	b.modulate_color = modulate
 	return b
 
 
-static func _button_styles(t: Theme, type: StringName, base: Color, border_w: int) -> void:
-	t.set_stylebox("normal", type, _box(base, BRASS, border_w, 12, 18.0))
-	t.set_stylebox("hover", type, _box(base.lightened(0.08), BRASS.lightened(0.15), border_w, 12, 18.0))
-	t.set_stylebox("pressed", type, _box(base.lightened(0.15), AMBER, border_w, 12, 18.0))
-	t.set_stylebox("disabled", type, _box(base.darkened(0.45), MUTED.darkened(0.3), border_w, 12, 18.0))
+## A NinePatchRect for the timer pieces (frame and fill).
+static func nine_patch(piece: String, margins: Vector2i) -> NinePatchRect:
+	var n := NinePatchRect.new()
+	n.texture = kit(piece)
+	n.patch_margin_left = margins.x
+	n.patch_margin_right = margins.x
+	n.patch_margin_top = margins.y
+	n.patch_margin_bottom = margins.y
+	n.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return n
+
+
+static func _button_styles(t: Theme, type: StringName, kind: String) -> void:
+	var content := Vector2(44.0, 22.0)
+	t.set_stylebox("normal", type, box("button_%s_normal" % kind, MARGIN_BUTTON, content))
+	t.set_stylebox("hover", type, box("button_%s_normal" % kind, MARGIN_BUTTON, content, Color(1.12, 1.12, 1.12)))
+	t.set_stylebox("pressed", type, box("button_%s_pressed" % kind, MARGIN_BUTTON, content))
+	t.set_stylebox("disabled", type, box("button_%s_disabled" % kind, MARGIN_BUTTON, content))
 	t.set_stylebox("focus", type, StyleBoxEmpty.new())
 	t.set_color("font_color", type, CREAM)
 	t.set_color("font_hover_color", type, Color.WHITE)
 	t.set_color("font_pressed_color", type, AMBER)
 	t.set_color("font_focus_color", type, CREAM)
 	t.set_color("font_disabled_color", type, MUTED)
+	t.set_color("font_outline_color", type, OUTLINE)
+	t.set_constant("outline_size", type, 6)
 
 
 static func _build() -> Theme:
 	var t := Theme.new()
 	t.default_font_size = 44
-	_button_styles(t, &"Button", BUTTON, 2)
-	# THROW / PLAY: the one oxblood call to action.
+	_button_styles(t, &"Button", "secondary")
+	# THROW / PLAY / CONTINUE: the one oxblood-lacquer call to action.
 	t.set_type_variation(&"ThrowButton", &"Button")
-	_button_styles(t, &"ThrowButton", OXBLOOD, 3)
+	_button_styles(t, &"ThrowButton", "primary")
 	t.set_font_size("font_size", &"ThrowButton", 60)
-	# Owned-charm slots: smaller text so names wrap inside a 184 px slot.
+	# Owned-charm slots sit in recessed brass sockets; empty ones are dimmed.
 	t.set_type_variation(&"SlotButton", &"Button")
-	_button_styles(t, &"SlotButton", BUTTON, 2)
+	_button_styles(t, &"SlotButton", "secondary")
+	var socket_content := Vector2(18.0, 14.0)
+	t.set_stylebox("normal", &"SlotButton", box("socket", MARGIN_SOCKET, socket_content))
+	t.set_stylebox("hover", &"SlotButton", box("socket", MARGIN_SOCKET, socket_content, Color(1.15, 1.15, 1.15)))
+	t.set_stylebox("pressed", &"SlotButton", box("socket", MARGIN_SOCKET, socket_content, Color(1.3, 1.2, 1.0)))
+	t.set_stylebox("disabled", &"SlotButton", box("socket", MARGIN_SOCKET, socket_content, Color(0.55, 0.55, 0.55)))
 	t.set_font_size("font_size", &"SlotButton", 28)
-	t.set_stylebox("panel", &"PanelContainer", _box(PANEL, BRASS, 2, 14, 22.0))
-	t.set_stylebox("panel", &"Panel", _box(PANEL, BRASS, 2, 14, 22.0))
+	t.set_stylebox("panel", &"PanelContainer", box("panel", MARGIN_PANEL, Vector2(40.0, 30.0)))
+	t.set_stylebox("panel", &"Panel", box("panel", MARGIN_PANEL, Vector2(40.0, 30.0)))
+	# Inset brass plaque behind readouts (round total, gold).
+	t.set_type_variation(&"PlaquePanel", &"Panel")
+	t.set_stylebox("panel", &"PlaquePanel", box("plaque", MARGIN_PLAQUE))
 	t.set_color("font_color", &"Label", CREAM)
+	t.set_color("font_shadow_color", &"Label", Color(0, 0, 0, 0.7))
+	t.set_constant("shadow_offset_x", &"Label", 2)
+	t.set_constant("shadow_offset_y", &"Label", 3)
 	t.set_type_variation(&"HudValue", &"Label")
 	t.set_color("font_color", &"HudValue", AMBER)
 	t.set_type_variation(&"CardBody", &"Label")
-	t.set_color("font_color", &"CardBody", CREAM.darkened(0.15))
+	t.set_color("font_color", &"CardBody", CREAM.darkened(0.12))
 	t.set_font_size("font_size", &"CardBody", 32)
 	return t

@@ -1616,3 +1616,205 @@ def export_production_table():
     wood *= (0.22 + 1.15 * np.exp(-(np.hypot(bx, by * 0.8) / 5.5) ** 2))[..., None]
     save_image("prod_backdrop", wood, os.path.join(TABLE_DIR, "backdrop.png"))
     return ["felt.png", "backdrop.png"]
+
+
+# ========================================================= production UI kit (add-smoke-room-ui-art)
+UI_DIR = os.path.join(PROJECT, "assets", "ui")
+UI_PX_PER_UNIT = 100.0  # 1 world unit = 100 px in every UI render
+
+
+def _ui_mat(name, base, metal=0.0, rough=0.5, coat=0.0, emit=None, bump=0.0, bump_scale=60.0, grain=None):
+    """Principled material for UI renders (baked into PNG, so procedural nodes are fine)."""
+    m = _new_mat(name)
+    nt = m.node_tree
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    b = nt.nodes.new("ShaderNodeBsdfPrincipled")
+    b.inputs["Base Color"].default_value = tuple(base) + (1.0,)
+    b.inputs["Metallic"].default_value = metal
+    b.inputs["Roughness"].default_value = rough
+    b.inputs["Coat Weight"].default_value = coat
+    if emit is not None:
+        b.inputs["Emission Color"].default_value = tuple(emit[0]) + (1.0,)
+        b.inputs["Emission Strength"].default_value = emit[1]
+    if grain is not None:  # wood: stretched noise drives the base colour
+        tc = nt.nodes.new("ShaderNodeTexCoord")
+        mp = nt.nodes.new("ShaderNodeMapping")
+        mp.inputs["Scale"].default_value = grain
+        nz = nt.nodes.new("ShaderNodeTexNoise")
+        nz.inputs["Scale"].default_value = 6.0
+        nz.inputs["Detail"].default_value = 8.0
+        nt.links.new(tc.outputs["Object"], mp.inputs["Vector"])
+        nt.links.new(mp.outputs["Vector"], nz.inputs["Vector"])
+        mix = nt.nodes.new("ShaderNodeMix")
+        mix.data_type = "RGBA"
+        _sock(mix.inputs, "A_Color").default_value = tuple(v * 0.55 for v in base) + (1.0,)
+        _sock(mix.inputs, "B_Color").default_value = tuple(min(1.0, v * 1.35) for v in base) + (1.0,)
+        nt.links.new(nz.outputs["Fac"], _sock(mix.inputs, "Factor_Float"))
+        nt.links.new(_sock(mix.outputs, "Result_Color"), b.inputs["Base Color"])
+    if bump > 0.0:
+        tc = nt.nodes.new("ShaderNodeTexCoord")
+        nz = nt.nodes.new("ShaderNodeTexNoise")
+        nz.inputs["Scale"].default_value = bump_scale
+        nz.inputs["Detail"].default_value = 6.0
+        bp = nt.nodes.new("ShaderNodeBump")
+        bp.inputs["Strength"].default_value = bump
+        nt.links.new(tc.outputs["Object"], nz.inputs["Vector"])
+        nt.links.new(nz.outputs["Fac"], bp.inputs["Height"])
+        nt.links.new(bp.outputs["Normal"], b.inputs["Normal"])
+    nt.links.new(b.outputs[0], out.inputs["Surface"])
+    return m
+
+
+def _ui_slab(name, w, h, r, depth, bevel, mat, z_top=0.0, hole=None, seg=8):
+    """Closed rounded-rect slab (or a frame ring when `hole` = (w, h, r)), built explicitly:
+    top and bottom caps plus walls, with only the top rim loops bevelled."""
+    bm = bmesh.new()
+    zb = z_top - depth
+
+    def loop(pw, ph, pr, z):
+        return [bm.verts.new((x, y, z)) for x, y in rrect_points(pw, ph, pr, seg)]
+
+    def bridge(a, b):
+        n = len(a)
+        return [bm.faces.new((a[i], a[(i + 1) % n], b[(i + 1) % n], b[i])) for i in range(n)]
+
+    ot, ob = loop(w, h, r, z_top), loop(w, h, r, zb)
+    rim = []
+    if hole is None:
+        bm.faces.new(ot)
+        bm.faces.new(list(reversed(ob)))
+    else:
+        it, ib = loop(hole[0], hole[1], hole[2], z_top), loop(hole[0], hole[1], hole[2], zb)
+        bridge(ot, it)  # top ring
+        bridge(ib, ob)  # bottom ring
+        bridge(it, ib)  # inner wall
+        rim += [(it[i], it[(i + 1) % len(it)]) for i in range(len(it))]
+    bridge(ob, ot)  # outer wall
+    rim += [(ot[i], ot[(i + 1) % len(ot)]) for i in range(len(ot))]
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    if bevel > 0:
+        edges = [bm.edges.get(pair) for pair in rim]
+        bmesh.ops.bevel(bm, geom=[e for e in edges if e is not None], offset=bevel, segments=4,
+                        affect="EDGES", profile=0.5, clamp_overlap=True)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    for poly in me.polygons:
+        poly.use_smooth = abs(poly.normal.z) < 0.999
+    return _mesh_obj(name, me, (mat,))
+
+
+def _perimeter(pts, step):
+    """Evenly spaced (x, y, tangent angle) samples along a closed polyline."""
+    out = []
+    n = len(pts)
+    carry = 0.0
+    for i in range(n):
+        x0, y0 = pts[i]
+        x1, y1 = pts[(i + 1) % n]
+        seg_len = math.hypot(x1 - x0, y1 - y0)
+        ang = math.atan2(y1 - y0, x1 - x0)
+        t = carry
+        while t < seg_len:
+            f = t / seg_len
+            out.append((x0 + (x1 - x0) * f, y0 + (y1 - y0) * f, ang))
+            t += step
+        carry = t - seg_len
+    return out
+
+
+def _ui_stage(px_w, px_h):
+    """Clean scene + top-down ortho camera framing px_w × px_h at UI_PX_PER_UNIT."""
+    reset_scene()
+    setup_render({"samples": 64})
+    # Warm, dim world so brass has something to reflect; one lamp key + a broad area
+    # light for the specular sweep across bevels (the Smoke Room lamp).
+    make_world_and_lights({"ambient": ((0.42, 0.28, 0.17), 0.9), "lights": [
+        {"type": "SUN", "color": (1.0, 0.86, 0.66), "energy": 1.7, "dir": (0.45, -0.6, -1.0), "extra": {"angle": 0.08}},
+        {"type": "AREA", "color": (1.0, 0.88, 0.7), "energy": 45.0, "loc": (-1.5, 2.0, 3.0),
+         "dir": (0.4, -0.5, -1.0), "extra": {"size": 2.5}},
+    ]})
+    cam = bpy.data.cameras.new("UiCam")
+    cam.type = "ORTHO"
+    cam.ortho_scale = max(px_w, px_h) / UI_PX_PER_UNIT
+    ob = _link(bpy.data.objects.new("UiCam", cam))
+    ob.location = (0, 0, 10)
+    return ob
+
+
+def _ui_render(name, cam, px_w, px_h):
+    path = os.path.join(UI_DIR, name + ".png")
+    render_to(path, (px_w, px_h), cam, transparent=True)
+    return name + ".png"
+
+
+UI_STATES = {
+    # name: (lacquer/wood tint multiplier, inner depth, brass roughness)
+    "normal": (1.0, 0.03, 0.28),
+    "pressed": (0.7, 0.07, 0.34),
+    "disabled": (0.45, 0.03, 0.6),
+}
+
+
+def export_production_ui():
+    """Smoke Room UI kit (add-smoke-room-ui-art): rendered pieces for 9-patch StyleBoxTextures."""
+    pal = DIRECTIONS[PROD_DIRECTION]["pal"]
+    os.makedirs(UI_DIR, exist_ok=True)
+    written = []
+    brass_col = pal["brass"]
+    # Buttons: 256×128, brass bezel ring + inset face (lacquer or walnut).
+    for kind, face_col, coat, grain in (("primary", (0.19, 0.018, 0.022), 1.0, None),
+                                        ("secondary", (0.13, 0.065, 0.035), 0.25, (1.0, 8.0, 1.0))):
+        for state, (tint, inset, brass_rough) in UI_STATES.items():
+            cam = _ui_stage(256, 128)
+            dull = 0.55 if state == "disabled" else 1.0
+            brass = _ui_mat("Brass", tuple(c * dull for c in brass_col), metal=0.85 * dull + 0.1,
+                            rough=brass_rough, bump=0.15, bump_scale=120.0)
+            face = _ui_mat("Face", tuple(c * tint for c in face_col), rough=0.18 if coat else 0.45,
+                           coat=coat * (0.4 if state == "disabled" else 1.0), grain=grain)
+            _ui_slab("Bezel", 2.5, 1.22, 0.32, 0.12, 0.05, brass, hole=(2.18, 0.9, 0.2))
+            _ui_slab("Face", 2.2, 0.92, 0.21, 0.1, 0.06, face, z_top=-inset)
+            written.append(_ui_render(f"button_{kind}_{state}", cam, 256, 128))
+    # Panel: 256×256 stitched leather in a riveted brass frame.
+    cam = _ui_stage(256, 256)
+    brass = _ui_mat("Brass", brass_col, metal=0.95, rough=0.3, bump=0.15, bump_scale=120.0)
+    leather = _ui_mat("Leather", (0.055, 0.028, 0.02), rough=0.6, bump=0.35, bump_scale=90.0)
+    thread = _ui_mat("Thread", (0.55, 0.42, 0.25), rough=0.7)
+    _ui_slab("Frame", 2.5, 2.5, 0.28, 0.1, 0.04, brass, hole=(2.22, 2.22, 0.16))
+    _ui_slab("Leather", 2.24, 2.24, 0.17, 0.08, 0.05, leather, z_top=-0.02)
+    for i, (x, y, ang) in enumerate(_perimeter(rrect_points(1.92, 1.92, 0.14, 6), 0.1)):
+        st = _ui_slab(f"Stitch{i}", 0.06, 0.022, 0.011, 0.01, 0.0, thread, z_top=-0.015)
+        st.location = (x, y, 0)
+        st.rotation_euler = (0, 0, ang)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            bpy.ops.mesh.primitive_uv_sphere_add(radius=0.055, location=(sx * 1.11, sy * 1.11, 0.0),
+                                                 segments=16, ring_count=8)
+            bpy.context.active_object.data.materials.append(brass)
+            for p in bpy.context.active_object.data.polygons:
+                p.use_smooth = True
+    written.append(_ui_render("panel", cam, 256, 256))
+    # Plaque: 256×96 inset readout (brass rim, dark recessed field).
+    cam = _ui_stage(256, 96)
+    brass = _ui_mat("Brass", brass_col, metal=0.95, rough=0.3, bump=0.1, bump_scale=120.0)
+    field = _ui_mat("Field", (0.03, 0.02, 0.018), rough=0.85, bump=0.1, bump_scale=200.0)
+    _ui_slab("Rim", 2.5, 0.92, 0.24, 0.08, 0.035, brass, hole=(2.28, 0.7, 0.14))
+    _ui_slab("Field", 2.3, 0.72, 0.15, 0.06, 0.02, field, z_top=-0.05)
+    written.append(_ui_render("plaque", cam, 256, 96))
+    # Socket: 160×160 recessed brass ring around dark velvet (charm slots).
+    cam = _ui_stage(160, 160)
+    brass = _ui_mat("Brass", brass_col, metal=0.95, rough=0.3)
+    velvet = _ui_mat("Velvet", (0.05, 0.022, 0.025), rough=0.95, bump=0.2, bump_scale=300.0)
+    _ui_slab("Ring", 1.52, 1.52, 0.36, 0.1, 0.05, brass, hole=(1.24, 1.24, 0.26))
+    _ui_slab("Velvet", 1.28, 1.28, 0.28, 0.08, 0.02, velvet, z_top=-0.07)
+    written.append(_ui_render("socket", cam, 160, 160))
+    # Timer: 512×56 brass tube frame (open window) and 64×32 amber glow fill.
+    cam = _ui_stage(512, 56)
+    brass = _ui_mat("Brass", brass_col, metal=0.95, rough=0.3)
+    _ui_slab("Tube", 5.06, 0.52, 0.26, 0.08, 0.05, brass, hole=(4.86, 0.32, 0.16))
+    written.append(_ui_render("timer_frame", cam, 512, 56))
+    cam = _ui_stage(64, 32)
+    glow = _ui_mat("Glow", (0.9, 0.36, 0.05), rough=0.3, emit=((1.0, 0.42, 0.05), 0.55))
+    _ui_slab("Fill", 0.6, 0.26, 0.13, 0.04, 0.04, glow)
+    written.append(_ui_render("timer_fill", cam, 64, 32))
+    return written

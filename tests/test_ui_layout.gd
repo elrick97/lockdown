@@ -97,6 +97,43 @@ func test_every_screen_has_backdrop_and_input_transparent_overlay() -> void:
 		assert_true(screen.get_child(0) is TextureRect, "backdrop drawn first")
 
 
+# --- Smoke Room UI kit (add-smoke-room-ui-art) ---
+
+func _kit_box(t: Theme, item: String, type: StringName) -> void:
+	var sb := t.get_stylebox(item, type)
+	assert_true(sb is StyleBoxTexture, "%s/%s is a kit texture" % [type, item])
+	if sb is StyleBoxTexture:
+		assert_true((sb as StyleBoxTexture).texture.resource_path.begins_with(UiStyle.UI_DIR),
+			"%s/%s texture comes from the UI kit" % [type, item])
+
+
+func test_theme_chrome_is_the_rendered_kit() -> void:
+	var t := UiStyle.theme()
+	for type in [&"Button", &"ThrowButton", &"SlotButton"]:
+		for item in ["normal", "hover", "pressed", "disabled"]:
+			_kit_box(t, item, type)
+	for type in [&"Panel", &"PanelContainer", &"PlaquePanel"]:
+		_kit_box(t, "panel", type)
+	var primary := t.get_stylebox("normal", &"ThrowButton") as StyleBoxTexture
+	var pressed := t.get_stylebox("pressed", &"ThrowButton") as StyleBoxTexture
+	var disabled := t.get_stylebox("disabled", &"ThrowButton") as StyleBoxTexture
+	assert_ne(primary.texture, pressed.texture, "pressed has its own art")
+	assert_ne(primary.texture, disabled.texture, "disabled has its own art")
+
+
+func test_timer_and_plaques_use_the_kit() -> void:
+	var scene := _throw_scene()
+	assert_true(scene._timer_track is NinePatchRect, "timer frame is a 9-patch")
+	assert_eq(scene._timer_track.texture.resource_path, UiStyle.UI_DIR + "timer_frame.png")
+	var fill := scene._timer_bar.get_child(0) as NinePatchRect
+	assert_not_null(fill, "timer fill is a 9-patch child of the bar")
+	assert_eq(fill.texture.resource_path, UiStyle.UI_DIR + "timer_fill.png")
+	assert_eq(scene._total_plaque.theme_type_variation, &"PlaquePanel")
+	var shop: Control = SHOP_SCENE.instantiate()
+	add_child_autofree(shop)
+	assert_eq(shop._gold_panel.theme_type_variation, &"PlaquePanel")
+
+
 func test_felt_fills_the_tray_behind_the_dice() -> void:
 	var scene := _throw_scene()
 	await wait_frames(2)

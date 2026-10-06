@@ -34,7 +34,9 @@ var _end_summary: Label
 var _new_run_button: Button
 var _menu_button: Button
 var _hud_panel: Panel
-var _timer_track: ColorRect
+var _timer_track: NinePatchRect
+var _total_plaque: Panel
+var _end_card: Panel
 var _charm_row: HBoxContainer
 var _charm_slots: Array[Button] = []
 var _felt: TextureRect
@@ -57,13 +59,23 @@ func _ready() -> void:
 	_hud_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_hud_panel)
 	move_child(_hud_panel, 0)
-	_timer_track = ColorRect.new()
-	_timer_track.color = Color(0.1, 0.06, 0.05)
-	_timer_track.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Brass tube frame + amber fill from the UI kit; the fill follows the bar's width,
+	# which _update_visuals animates, so timing code is untouched.
+	_timer_track = UiStyle.nine_patch("timer_frame", UiStyle.TIMER_FRAME_MARGINS)
 	add_child(_timer_track)
 	move_child(_timer_track, _timer_bar.get_index())
-	_timer_bar.color = UiStyle.AMBER
+	_timer_bar.color = Color(0, 0, 0, 0)
+	var fill := UiStyle.nine_patch("timer_fill", UiStyle.TIMER_FILL_MARGINS)
+	_timer_bar.add_child(fill)
+	fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_total_plaque = Panel.new()
+	_total_plaque.theme_type_variation = &"PlaquePanel"
+	_total_plaque.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_total_plaque)
+	move_child(_total_plaque, _total_label.get_index())
 	_total_label.theme_type_variation = &"HudValue"
+	_total_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_throw_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_result.theme_type_variation = &"HudValue"
 	_throw_button.theme_type_variation = &"ThrowButton"
 	_charm_row = HBoxContainer.new()
@@ -137,8 +149,10 @@ func _apply_layout() -> void:
 	_set_rect(_status, 0.0, 0.0, 1.0, 0.0, 40.0, 270.0, -40.0, 360.0)
 	_set_rect(_result, 0.0, 0.0, 1.0, 0.0, 40.0, 370.0, -40.0, 600.0)
 	if _timer_track != null:
-		_set_rect(_timer_track, 0.0, 0.0, 0.0, 0.0, 40.0, 615.0, 1040.0, 650.0)
-	_set_rect(_timer_bar, 0.0, 0.0, 0.0, 0.0, 40.0, 615.0, 1040.0, 650.0)
+		_set_rect(_timer_track, 0.0, 0.0, 0.0, 0.0, 30.0, 600.0, 1050.0, 656.0)
+	_set_rect(_timer_bar, 0.0, 0.0, 0.0, 0.0, 40.0, 610.0, 1040.0, 646.0)
+	if _total_plaque != null:
+		_set_rect(_total_plaque, 0.5, 0.0, 1.0, 0.0, 10.0, 132.0, -48.0, 236.0)
 	_set_rect(_tray, 0.0, 0.27, 1.0, 0.66, 0.0, 0.0, 0.0, 0.0)
 	if _charm_row != null:
 		_set_rect(_charm_row, 0.0, 0.0, 1.0, 0.0, 40.0, 1610.0, -40.0, 1770.0)
@@ -151,6 +165,7 @@ func _apply_layout() -> void:
 		_set_rect(_trinket_row, 0.0, 0.0, 1.0, 0.0, 40.0, 1800.0, -40.0, 1930.0)
 	if _end_panel != null:
 		_end_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_set_rect(_end_card, 0.0, 0.0, 1.0, 0.0, 60.0, 560.0, -60.0, 1240.0)
 		_set_rect(_end_title, 0.0, 0.0, 1.0, 0.0, 40.0, 620.0, -40.0, 760.0)
 		_set_rect(_end_summary, 0.0, 0.0, 1.0, 0.0, 40.0, 800.0, -40.0, 1100.0)
 		_set_rect(_new_run_button, 0.0, 1.0, 0.5, 1.0, 40.0, -300.0, -20.0, -120.0)
@@ -408,6 +423,9 @@ func _build_end_panel() -> void:
 	_end_panel.visible = false
 	add_child(_end_panel)
 	move_child(_end_panel, _cover.get_index())
+	_end_card = Panel.new()
+	_end_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_end_panel.add_child(_end_card)
 	_end_title = _end_label(76)
 	_end_summary = _end_label(46)
 	_new_run_button = _end_button("NEW RUN")
