@@ -7,7 +7,7 @@ extends RefCounted
 const BRASS := Color("#CC994C")  # palette_ui_line
 const AMBER := Color("#FF9E29")  # palette_accent
 const CREAM := Color("#F2E6D0")
-const MUTED := Color("#8A7A64")
+const MUTED := Color("#A8977C")  # brightened for contrast on dark plaques
 const OUTLINE := Color("#1A0B06")
 const UI_DIR := "res://assets/ui/"
 ## 9-patch margins in px, matching the kit renders (art-direction spec).

@@ -6,6 +6,6 @@
 [resource]
 script = ExtResource("1_freeze")
 display_name = "Freeze Timer"
-description = "Pause the current lock window for 2 seconds."
+description = "+2 s on the current lock window."
 cost = 4
 icon = ExtResource("9_icon")

@@ -46,7 +46,7 @@ func _init() -> void:
 	mult_label = _value(_mult_plaque, "MULT", UiStyle.AMBER, 60)
 	_sign("×", Rect2(800, 380, 50, 110))
 	_heat_plaque = _plaque(Rect2(850, 372, 190, 120))
-	heat_label = _value(_heat_plaque, "HEAT", HEAT_COLOR, 44)
+	heat_label = _value(_heat_plaque, "HEAT", HEAT_COLOR, 52)
 	_bar = Control.new()
 	_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bar.position = BAR_POS
@@ -84,12 +84,12 @@ func _value(plaque: Panel, caption: String, color: Color, font_size: int) -> Lab
 	var cap := Label.new()
 	cap.text = caption
 	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	cap.add_theme_font_size_override("font_size", 22)
+	cap.add_theme_font_size_override("font_size", 30)  # ≥ 30 px captions (≈ 11 pt on a phone)
 	cap.add_theme_color_override("font_color", UiStyle.MUTED)
 	cap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	plaque.add_child(cap)
-	cap.position = Vector2(0, 6)
-	cap.size = Vector2(plaque.size.x, 28)
+	cap.position = Vector2(0, 2)
+	cap.size = Vector2(plaque.size.x, 34)
 	var v := Label.new()
 	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -99,8 +99,8 @@ func _value(plaque: Panel, caption: String, color: Color, font_size: int) -> Lab
 	v.add_theme_constant_override("outline_size", 8)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	plaque.add_child(v)
-	v.position = Vector2(0, 26)
-	v.size = Vector2(plaque.size.x, plaque.size.y - 30)
+	v.position = Vector2(0, 30)
+	v.size = Vector2(plaque.size.x, plaque.size.y - 32)
 	v.pivot_offset = v.size / 2.0
 	return v
 

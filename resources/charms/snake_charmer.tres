@@ -6,6 +6,6 @@
 [resource]
 script = ExtResource("1_snakecharmer")
 display_name = "Snake Charmer"
-description = "Snake eyes (pair of 1s) score at ×4 Mult instead."
+description = "A Pair of 1s scores 4 Mult, but no Pair chips."
 cost = 5
 icon = ExtResource("2_icon")

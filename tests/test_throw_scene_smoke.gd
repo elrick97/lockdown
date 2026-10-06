@@ -49,7 +49,7 @@ func test_full_throw_resolves_on_screen() -> void:
 		scene._controller.last_result, scene._scoring_config,
 		scene._config.lock_window_duration_s, false)
 	assert_gt(bd.final_score, 0, "a resolved throw produces a positive score")
-	# Status after resolve is either "Score X — N throw(s) left" (mid-round) or
+	# Status after resolve is either "X scored · Y to go · N throws left" (mid-round) or
 	# a round-end/ante message depending on whether the target was hit.
 	assert_ne(scene._status.text, "Tumbling…", "status updated from tumble message after resolve")
 

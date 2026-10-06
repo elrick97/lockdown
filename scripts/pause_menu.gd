@@ -110,7 +110,7 @@ func _show(p: StringName) -> void:
 			for row in COMBOS:
 				_text("%s — %s · %d × %d" % [row[0], row[1], _scoring.get_chips(row[2]),
 					_scoring.get_mult(row[2])], 34)
-			_text("Chips × Mult × Heat. Loose locked dice add their pips.", 30, UiStyle.MUTED)
+			_text("Pips are a die's face points. CHIPS = pips + combo and charm chips.\nScore = Chips × Mult × Heat.", 30, UiStyle.MUTED)
 			_back()
 		&"settings":
 			title_label.text = "SETTINGS"

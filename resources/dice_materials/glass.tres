@@ -10,7 +10,7 @@
 script = ExtResource("1_glass")
 material_id = &"glass"
 display_name = "Glass"
-description = "Scores x2 Pips, but shatters if re-rolled. Lock it in Window 1 or lose it."
+description = "Scores ×2 pips, but shatters if re-rolled. Lock it before the first re-roll."
 pip_offset = 0
 pip_multiplier = 2
 shatter_on_reroll = true

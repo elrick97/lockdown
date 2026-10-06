@@ -6,6 +6,6 @@
 [resource]
 script = ExtResource("1_collector")
 display_name = "Collector"
-description = "+1 Mult per distinct face value in your locked set."
+description = "+1 Mult for each different face you lock."
 cost = 5
 icon = ExtResource("2_icon")

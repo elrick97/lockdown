@@ -142,7 +142,7 @@ func _ready() -> void:
 	_skip_hint.text = "TAP TO SKIP"
 	_skip_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_skip_hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_skip_hint.add_theme_font_size_override("font_size", 30)
+	_skip_hint.add_theme_font_size_override("font_size", 34)
 	_skip_hint.add_theme_color_override("font_color", UiStyle.MUTED)
 	_skip_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_skip_hint.visible = false
@@ -605,6 +605,16 @@ func _on_resolved(result: ThrowResult) -> void:
 	_apply_score_speed()
 
 
+## What the status band says after a throw (ui-theme spec): progress, not a repeat
+## of the score readout.
+static func status_after_throw(scored: int, to_go: int, throws_left: int) -> String:
+	if to_go <= 0:
+		return "Target hit!"
+	if throws_left == 1:
+		return "LAST THROW · NEED %d" % to_go
+	return "%d scored · %d to go · %d throws left" % [scored, to_go, throws_left]
+
+
 ## Score speed setting: 2× plays the cascade faster; Instant jumps to its end.
 func _apply_score_speed() -> void:
 	if _cascade == null or not _cascade.is_playing():
@@ -624,8 +634,8 @@ func _on_cascade_finished() -> void:
 	if _round.is_done:
 		return  # _on_round_won/lost → _on_ante_advanced/_on_run_* already updated labels + button
 	_update_round_labels()
-	var throws_left := _ante_config.throws_per_round - _round.current_throw
-	_status.text = "Score %d — %d throw(s) left" % [_cascade.final_score, throws_left]
+	_status.text = status_after_throw(_cascade.final_score, _round.target - _round.total,
+		_ante_config.throws_per_round - _round.current_throw)
 	_throw_button.disabled = false
 
 

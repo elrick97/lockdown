@@ -35,7 +35,7 @@ func _init() -> void:
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(col)
 	title_label = _label(col, 48, UiStyle.CREAM)
-	tag_label = _label(col, 26, UiStyle.MUTED)
+	tag_label = _label(col, 30, UiStyle.MUTED)
 	body_label = _label(col, 36, UiStyle.CREAM.darkened(0.08))
 	body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body_label.custom_minimum_size.x = WIDTH - 80.0 - ICON_PX - 28.0

@@ -10,7 +10,7 @@
 script = ExtResource("1_iron")
 material_id = &"iron"
 display_name = "Iron"
-description = "Tumbles slower (easier to read). Each face scores -1 Pip."
+description = "Tumbles slower (easier to read). Each face scores −1 pip."
 pip_offset = -1
 pip_multiplier = 1
 shatter_on_reroll = false

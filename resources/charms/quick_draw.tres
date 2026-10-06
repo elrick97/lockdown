@@ -6,6 +6,6 @@
 [resource]
 script = ExtResource("1_quickdraw")
 display_name = "Quick Draw"
-description = "Lock all dice in Window 1 to score ×3 Mult."
+description = "Lock every die in Window 1: +2 Mult."
 cost = 6
 icon = ExtResource("2_icon")
