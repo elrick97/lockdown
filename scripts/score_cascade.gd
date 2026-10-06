@@ -52,27 +52,38 @@ func _init(p_scene: Node, p_tumbler: DiceTumbler, p_hud: ScoreHud, p_result: Lab
 
 ## The breakdown as display steps. Pure: summing every step's chips gives
 ## pips + bonus_chips + charm_chips, and its mult gives combo_mult + charm_mult.
+## Balatro order: the hand's base (combo chips × mult, already previewed while
+## locking) stamps first, then dice add pips, then Gem, charms and Heat.
 static func build_steps(bd: ScoreBreakdown, base_mult: int) -> Array:
 	var steps: Array = []
-	for d in bd.die_pips:
-		steps.append({"kind": &"die", "idx": int(d.idx), "chips": int(d.pips), "mult": 0.0})
+	var base := combo_base(bd, base_mult)
 	var names: Array[String] = []
-	var combo_mult := 0
 	for c in bd.combos:
 		names.append(c.name)
-	if not names.is_empty():
-		steps.append({"kind": &"stamp", "text": " + ".join(names), "chips": 0, "mult": 0.0})
-	for c in bd.combos:
-		steps.append({"kind": &"combo", "chips": int(c.chips), "mult": float(c.mult)})
-		combo_mult += int(c.mult)
-	if combo_mult < base_mult:
-		steps.append({"kind": &"base", "chips": 0, "mult": float(base_mult - combo_mult)})
+	if names.is_empty():
+		steps.append({"kind": &"base", "chips": int(base.chips), "mult": float(base.mult)})
+	else:
+		steps.append({"kind": &"stamp", "text": " + ".join(names),
+			"chips": int(base.chips), "mult": float(base.mult)})
+	for d in bd.die_pips:
+		steps.append({"kind": &"die", "idx": int(d.idx), "chips": int(d.pips), "mult": 0.0})
 	if bd.gem_chips != 0:
 		steps.append({"kind": &"gem", "chips": bd.gem_chips, "mult": 0.0})
 	for t in bd.charm_triggers:
 		steps.append({"kind": &"charm", "slot": int(t.slot), "chips": int(t.chips), "mult": float(t.mult)})
 	steps.append({"kind": &"heat", "chips": 0, "mult": 0.0})
 	return steps
+
+
+## The hand's base before dice and charms: combo chips and mult (base_mult when no
+## combo). This is what the live lock preview shows (throw-loop spec).
+static func combo_base(bd: ScoreBreakdown, base_mult: int) -> Dictionary:
+	var chips := 0
+	var mult := 0
+	for c in bd.combos:
+		chips += int(c.chips)
+		mult += int(c.mult)
+	return {"chips": chips, "mult": maxi(mult, base_mult)}
 
 
 static func sum_steps(steps: Array) -> Dictionary:
@@ -152,7 +163,7 @@ func _step_s(step: Dictionary) -> float:
 	match step.kind:
 		&"die": return _fx.die_step_s
 		&"stamp": return _fx.stamp_s
-		&"combo", &"gem": return _fx.combo_step_s
+		&"gem": return _fx.combo_step_s
 		&"base": return _fx.combo_step_s * 0.5
 		&"charm": return _fx.charm_pulse_gap_s
 		&"heat": return _fx.heat_step_s
@@ -170,12 +181,18 @@ func _apply(step: Dictionary, tier: int) -> void:
 			var r := _tumbler.die_rect(idx)
 			var at := r.get_center() if r.size != Vector2.ZERO else _hud.chips_anchor()
 			_hud.float_text("+%d" % int(step.chips), at, UiStyle.CREAM)
-		&"stamp":
-			_hud.stamp(step.text)
-			shake_requested.emit(_fx.shake_px_by_tier[tier], _fx.shake_s_by_tier[tier])
-			_hud.burst(_hud.stamp_center, _fx.sparks_by_tier[tier])
-		&"combo", &"gem", &"base":
-			_float_delta(step, "GEM" if step.kind == &"gem" else "")
+		&"stamp", &"base":
+			if step.kind == &"stamp":
+				_hud.stamp(step.text)
+				shake_requested.emit(_fx.shake_px_by_tier[tier], _fx.shake_s_by_tier[tier])
+				_hud.burst(_hud.stamp_center, _fx.sparks_by_tier[tier])
+			# The plaques usually show this base already (live preview); float only
+			# what changed, e.g. after window 3 force-locked more dice.
+			var shown_chips := int(_hud.chips_label.text) if _hud.chips_label.text.is_valid_int() else 0
+			var shown_mult := float(_hud.mult_label.text) if _hud.mult_label.text.is_valid_float() else 0.0
+			_float_delta({"chips": int(step.chips) - shown_chips, "mult": float(step.mult) - shown_mult}, "")
+		&"gem":
+			_float_delta(step, "GEM")
 		&"charm":
 			charm_triggered.emit(int(step.slot))
 			_float_delta(step, "")

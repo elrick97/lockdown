@@ -395,11 +395,38 @@ func _update_round_labels() -> void:
 
 func _on_window_started(window_index: int) -> void:
 	_tumbler.reveal(_controller.faces, _controller.locked)
-	_status.text = "Window %d / 3 — TAP TO LOCK" % window_index
+	_refresh_lock_preview(false)
+
+
+## Live locked-set preview (throw-loop spec): the best combo of the dice locked so
+## far, scored read-only without charms; the plaques show the hand's base and the
+## status band names it. Charms and the final total stay hidden for the cascade.
+func _refresh_lock_preview(punch: bool) -> void:
+	var window := "Window %d / 3" % _controller.window_index
+	if not _controller.locked.has(true):
+		_status.text = window + " — TAP TO LOCK"
+		return
+	var bd := _scoring.score(_controller.snapshot_result(), _scoring_config, _effective_window_s)
+	var base := ScoreCascade.combo_base(bd, _scoring_config.base_mult)
+	var names: Array[String] = []
+	for c in bd.combos:
+		names.append(String(c.name).to_upper())
+	if names.is_empty():
+		_status.text = window + " · no combo yet"
+	else:
+		_status.text = "%s · %s · %d × %d" % [window, " + ".join(names), base.chips, base.mult]
+	var changed := _hud.chips_label.text != str(base.chips) or _hud.mult_label.text != ScoreHud.fmt_mult(base.mult)
+	_hud.set_chips(base.chips)
+	_hud.set_mult(base.mult)
+	if punch and changed:
+		_hud.punch(_hud.chips_label)
+		_hud.punch(_hud.mult_label)
 
 
 func _on_die_locked(die_index: int, _window_index: int) -> void:
 	_tumbler.lock_die(die_index, _controller.faces[die_index])
+	if _controller.state == ThrowController.State.LOCK_WINDOW:
+		_refresh_lock_preview(true)
 	# Lock feedback (throw-loop spec): the die punches and the table nudges.
 	_tumbler.punch_die(die_index, _fx.lock_punch_scale, _fx.lock_punch_s)
 	_screen_shake(_fx.lock_shake_px, _fx.lock_shake_s)

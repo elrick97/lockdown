@@ -219,6 +219,16 @@ func _force_lock_remaining() -> void:
 
 func _resolve() -> void:
 	state = State.RESOLVED
+	var result := snapshot_result()
+	_bag.return_dice(_drawn)
+	_drawn = []
+	last_result = result
+	resolved.emit(result)
+
+
+## The throw as it stands (locked dice so far, windows, materials, carvings).
+## Read-only: used by _resolve and by the live locked-set preview.
+func snapshot_result() -> ThrowResult:
 	var result := ThrowResult.new()
 	result.faces = faces.duplicate()
 	result.locked_order = _lock_sequence.duplicate()
@@ -241,10 +251,7 @@ func _resolve() -> void:
 	result.pip_offsets = pip_off
 	result.pip_multipliers = pip_mul
 	result.carve_types = carve_types
-	_bag.return_dice(_drawn)
-	_drawn = []
-	last_result = result
-	resolved.emit(result)
+	return result
 
 
 func _roll_face() -> int:

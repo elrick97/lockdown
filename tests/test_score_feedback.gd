@@ -82,6 +82,36 @@ func test_tap_skips_the_cascade_after_the_grace() -> void:
 	assert_eq(scene._result.text, "%d pts" % scene._cascade.final_score, "lands on the real score")
 
 
+func test_locking_previews_the_combo_base() -> void:
+	var scene := _scene()
+	scene._round.target = 1000000
+	_open_window(scene)
+	assert_true(scene._status.text.ends_with("TAP TO LOCK"), "no preview before any lock")
+	scene._controller.faces[0] = 4
+	scene._controller.faces[1] = 4
+	scene._controller.faces[2] = 2
+	scene._controller.lock_die(2)
+	assert_true(scene._status.text.ends_with("no combo yet"), scene._status.text)
+	scene._controller.lock_die(0)
+	scene._controller.lock_die(1)
+	var cfg: ScoringConfig = scene._scoring_config
+	assert_true(scene._status.text.ends_with("PAIR · %d × %d" % [cfg.pair_chips, cfg.pair_mult]), scene._status.text)
+	assert_eq(scene._hud.chips_label.text, str(cfg.pair_chips), "CHIPS shows the hand's base")
+	assert_eq(scene._hud.mult_label.text, str(cfg.pair_mult), "MULT shows the hand's base")
+
+
+func test_preview_ignores_charms() -> void:
+	var scene := _scene()
+	RunCoordinator.inventory.add_charm(load("res://resources/charms/hair_trigger.tres"))  # +5 chips per W1 lock
+	scene._round.target = 1000000
+	_open_window(scene)
+	scene._controller.faces[0] = 6
+	scene._controller.faces[1] = 6
+	scene._controller.lock_die(0)
+	scene._controller.lock_die(1)
+	assert_eq(scene._hud.chips_label.text, str(scene._scoring_config.pair_chips), "charm bonus stays for the cascade")
+
+
 func test_throw_disabled_until_cascade_finishes() -> void:
 	var scene := _scene()
 	scene._round.target = 1000000  # keep the round open whatever this throw scores
