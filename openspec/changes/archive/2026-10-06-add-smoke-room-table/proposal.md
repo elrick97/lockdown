@@ -9,7 +9,7 @@ The Smoke Room dice now sit on a flat gray background. The direction's mood come
 - **Tray:** a felt texture (1024², Smoke Room palette, lamp pool, wall AO and a dark rim painted in) behind the dice SubViewport, sized to the tray band. The dice's blob shadows and lock rings sit on it.
 - **Backdrop:** a full-screen dark walnut texture (1024×2048) with the pool's falloff painted in, behind everything.
 - **Overlay:** one full-screen canvas shader on top: film grain 0.07, vignette 0.6, no scanlines or chroma (spec tunables), with grain animated at a fixed 24 fps step so it's cheap. It applies to the start and shop screens too, for one consistent look. It reads no input (mouse filter ignore).
-- **Assets** come from the Blender script's production export (`res://assets/table/`), with the same budget checks as the dice. The textures import VRAM-compressed (no runtime stamping needed).
+- **Assets** come from the Blender script's production export (`res://assets/table/`), with the same budget checks as the dice. They import as lossy WebP: the web build ships one copy instead of a desktop and a mobile VRAM format, and the noisy felt/wood hides lossy artifacts.
 - **Frame-time check:** `tools/perf_dice.gd` is extended to include the table and overlay, still reported as a desktop stand-in.
 
 ## Capabilities

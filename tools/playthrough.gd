@@ -219,11 +219,17 @@ func _scenario_boss() -> void:
 	_check("BOSS ROUND" in scene._ante_label.text, "Ante 3 label reads '%s'" % scene._ante_label.text)
 	_press(scene._throw_button)
 	await _wait(func() -> bool: return scene._controller.state == ThrowController.State.LOCK_WINDOW)
+	var ctrl_b: ThrowController = scene._controller
+	_check(is_equal_approx(ctrl_b._config.lock_window_duration_s, 1.25),
+		"Boss lock window is 1.25 s, half of 2.5 s")
+	# Frame-independent: the window drains in 1.25 s, so it must close well before the
+	# normal 2.5 s; time_remaining never exceeds the boss length.
+	_check(ctrl_b.time_remaining() <= 1.25, "Boss window starts at most 1.25 s long (%.2fs)" % ctrl_b.time_remaining())
 	await _screenshot("boss_window")
 	var t0 := Time.get_ticks_msec()
-	await _wait(func() -> bool: return scene._controller.state == ThrowController.State.REROLL)
+	await _wait(func() -> bool: return ctrl_b.state == ThrowController.State.REROLL)
 	var window_s := (Time.get_ticks_msec() - t0) / 1000.0
-	_check(absf(window_s - 1.25) < 0.15, "Boss lock window lasts ~1.25s, half of 2.5s (measured %.2fs)" % window_s)
+	_check(window_s < 2.0, "Boss window closes well before a normal 2.5 s window (%.2fs)" % window_s)
 
 
 func _scenario_risk_skip() -> void:

@@ -78,3 +78,27 @@ func test_shop_cards_show_descriptions_and_owned_line() -> void:
 		_assert_tappable(shop._buy_buttons[i], SHOP_Y, "BUY %d" % i)
 	_assert_tappable(shop._reroll_button, SHOP_Y, "RE-ROLL")
 	_assert_tappable(shop._continue_button, SHOP_Y, "CONTINUE")
+
+
+# --- Smoke Room table (add-smoke-room-table) ---
+
+func _overlay_of(screen: Node) -> SmokeOverlay:
+	return screen.find_children("*", "SmokeOverlay", false, false)[0] as SmokeOverlay
+
+
+func test_every_screen_has_backdrop_and_input_transparent_overlay() -> void:
+	var start: Control = START_SCENE.instantiate()
+	add_child_autofree(start)
+	var shop: Control = SHOP_SCENE.instantiate()
+	add_child_autofree(shop)
+	for screen in [start, _throw_scene(), shop]:
+		var overlay := _overlay_of(screen)
+		assert_eq(overlay.rect.mouse_filter, Control.MOUSE_FILTER_IGNORE, "overlay never takes input")
+		assert_true(screen.get_child(0) is TextureRect, "backdrop drawn first")
+
+
+func test_felt_fills_the_tray_behind_the_dice() -> void:
+	var scene := _throw_scene()
+	await wait_frames(2)
+	assert_eq(scene._felt.get_global_rect(), scene._tray.get_global_rect(), "felt covers the tray band")
+	assert_lt(scene._felt.get_index(), scene._tumbler.get_index(), "felt is behind the dice")

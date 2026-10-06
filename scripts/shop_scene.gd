@@ -69,6 +69,8 @@ func _ready() -> void:
 	add_child(_owned_label)
 	_offer_container.add_theme_constant_override("separation", 24)
 	_continue_button.theme_type_variation = &"ThrowButton"
+	SmokeOverlay.add_backdrop(self)
+	SmokeOverlay.add_to(self)
 	_ledger = RunCoordinator.ledger
 	_shop_config = RunCoordinator.shop_config
 	_apply_layout()

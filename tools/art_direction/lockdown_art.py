@@ -1559,3 +1559,54 @@ def export_production_dice():
                               export_cameras=False, export_lights=False)
     written.append("die.glb")
     return written, base_tris(ob)
+
+
+# ====================================================== production table (add-smoke-room-table)
+TABLE_DIR = os.path.join(PROJECT, "assets", "table")
+
+
+def export_production_table():
+    """Felt (tray band) and backdrop (full screen) with the lamp pool painted in."""
+    pal = DIRECTIONS[PROD_DIRECTION]["pal"]
+    os.makedirs(TABLE_DIR, exist_ok=True)
+    rng = np.random.default_rng(23)
+
+    # Felt: drawn over the tray band (1080 x 936 px); work in tray units (6.6 x 5.7).
+    S = 1024
+    u = (np.arange(S, dtype=np.float32) + 0.5) / S
+    U, V = np.meshgrid(u, u)
+    tw, th = 6.6, 5.7
+    wx, wy = (U - 0.5) * tw, (V - 0.5) * th
+    sd = _rrect_sd(wx, wy, tw / 2, th / 2, 0.5)  # 0 at the outer edge, negative inside
+    rim_w = 0.22
+    fib = _noise(S, S, 3, rng, 3)
+    mot = _noise(S, S, 140, rng, 3)
+    felt = np.array(pal["felt"])[None, None, :] * (0.86 + 0.2 * fib[..., None]) * (0.9 + 0.2 * mot[..., None])
+    inner = sd + rim_w  # 0 at the felt's edge
+    ao = 0.55 + 0.45 * _smooth(0.0, 0.7, -inner)
+    a0, a1, r0 = 0.42, 0.9, 3.0  # art-direction spec: lamp_pool base, centre gain, radius
+    pool = a0 + a1 * np.exp(-(np.hypot(wx, wy * 1.1) / r0) ** 2)
+    col = felt * (ao * pool)[..., None]
+    leather = np.array(pal["rim"])[None, None, :] * (0.8 + 0.3 * _noise(S, S, 12, rng, 3)[..., None])
+    leather *= (0.55 + 0.45 * pool)[..., None]
+    rim = _soft(-inner, 0.01)  # 1 on the rim band
+    col = col * (1 - rim[..., None]) + leather * rim[..., None]
+    brass_line = np.exp(-((inner + 0.012) / 0.008) ** 2)
+    col = col * (1 - brass_line[..., None]) + np.array(pal["brass"])[None, None, :] * (0.4 + 0.6 * pool)[..., None] * brass_line[..., None]
+    alpha = _soft(sd, 0.01)
+    save_image("prod_felt", np.concatenate([col, alpha[..., None]], -1), os.path.join(TABLE_DIR, "felt.png"))
+
+    # Backdrop: full screen 1080 x 2400 -> 1024 x 2048, pool centred on the tray band.
+    W, H = 1024, 2048
+    Ub, Vb = np.meshgrid((np.arange(W) + 0.5) / W, (np.arange(H) + 0.5) / H)
+    bx, by = (Ub - 0.5) * 7.2, (Vb - 0.535) * 16.0  # rows bottom-first: tray centre at 46.5% from top
+    pu = bx / 1.15 + 50
+    grain = _noise(H, W, 18, rng, 4, (10, 1))
+    tone = (np.sin(np.floor(pu) * 12.9898) * 43758.5453) % 1.0
+    wood = np.array(pal["table"])[None, None, :] * (0.7 + 0.35 * grain[..., None] + 0.25 * tone[..., None])
+    f = pu % 1.0
+    gap = np.exp(-f ** 2 / 0.0004) + np.exp(-(f - 1.0) ** 2 / 0.0004)
+    wood *= (1 - 0.6 * gap)[..., None]
+    wood *= (0.22 + 1.15 * np.exp(-(np.hypot(bx, by * 0.8) / 5.5) ** 2))[..., None]
+    save_image("prod_backdrop", wood, os.path.join(TABLE_DIR, "backdrop.png"))
+    return ["felt.png", "backdrop.png"]

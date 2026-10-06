@@ -63,8 +63,8 @@
 - [~] First juice pass: score tick-up audio w/ rising pitch, lock haptics, combo screen shake `add-juice-pass` *(haptics + shake done; rising-pitch tick-up audio still open: needs audio assets, players are stubbed)*
 - [x] Number cascade animation on scoring `add-score-cascade`
 - [x] Art direction exploration: 3 style frames, pick one `add-art-direction` *(picked B "Smoke Room", logged in PRD §5)*
-- [ ] UI layout pass: thumb-zone audit on-device
-- [~] Placeholder → first-pass dice/charm art for slice content `add-smoke-room-dice` *(dice first; charm icons separate)*
+- [x] UI layout pass: thumb-zone audit `add-smoke-room-ui` *(audited locally per owner rule: every control ≥ 48 dp in the thumb zone, tested)*
+- [~] Placeholder → first-pass dice/charm art for slice content `add-smoke-room-dice` `add-smoke-room-table` *(dice + table done; charm icons still open)*
 
 ### Validation
 - [ ] 5 fresh playtesters, no instructions given — log comprehension failures

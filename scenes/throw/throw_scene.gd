@@ -9,6 +9,7 @@ const TIMER_BAR_FULL_WIDTH := 1000.0
 const MAX_COUNTDOWN_STEP_S := 0.1
 const START_SCENE := "res://scenes/start/start_scene.tscn"
 const CHARM_SLOTS := 5
+const FELT := preload("res://assets/table/felt.png")
 
 var _config: ThrowConfig = preload("res://resources/throw_config.tres")
 var _scoring_config: ScoringConfig = preload("res://resources/scoring_config.tres")
@@ -36,6 +37,7 @@ var _hud_panel: Panel
 var _timer_track: ColorRect
 var _charm_row: HBoxContainer
 var _charm_slots: Array[Button] = []
+var _felt: TextureRect
 
 @onready var _tray: Control = $Tray
 @onready var _timer_bar: ColorRect = $TimerBar
@@ -67,6 +69,16 @@ func _ready() -> void:
 	_charm_row = HBoxContainer.new()
 	_charm_row.add_theme_constant_override("separation", 20)
 	add_child(_charm_row)
+	SmokeOverlay.add_backdrop(self)
+	SmokeOverlay.add_to(self)
+	# Felt with the lamp pool painted in, behind the dice (art-direction spec).
+	_felt = TextureRect.new()
+	_felt.texture = FELT
+	_felt.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_felt.stretch_mode = TextureRect.STRETCH_SCALE
+	_felt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_tray.add_child(_felt)
+	_felt.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_skip_button = Button.new()
 	_skip_button.text = "SKIP RISK (+3g)"
 	_skip_button.add_theme_font_size_override("font_size", 40)

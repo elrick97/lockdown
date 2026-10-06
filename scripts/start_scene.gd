@@ -6,7 +6,6 @@ extends Control
 const THROW_SCENE := "res://scenes/throw/throw_scene.tscn"
 const BRASS := UiStyle.BRASS
 const AMBER := UiStyle.AMBER
-const BACKGROUND := Color("#1C110A")  # art-direction spec: palette_backdrop
 const HOW_TO := [
 	"Throw, then tap dice to lock them.",
 	"Lock before the timer empties: the rest re-roll.",
@@ -21,11 +20,8 @@ var _play_button: Button
 
 func _ready() -> void:
 	theme = UiStyle.theme()
-	var bg := ColorRect.new()
-	bg.color = BACKGROUND
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(bg)
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	SmokeOverlay.add_backdrop(self)
+	SmokeOverlay.add_to(self)
 
 	_mark = Control.new()
 	_mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
