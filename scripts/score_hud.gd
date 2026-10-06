@@ -118,6 +118,11 @@ func _sign(text: String, r: Rect2) -> void:
 	add_child(l)
 
 
+## The round total readout: "Total 120 · Target 350".
+static func total_text(total: int, target: int) -> String:
+	return "Total %d · Target %d" % [total, target]
+
+
 static func fmt_mult(v: float) -> String:
 	return "%d" % roundi(v) if is_equal_approx(v, roundf(v)) else "%.1f" % v
 

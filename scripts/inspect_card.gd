@@ -40,26 +40,14 @@ func _init() -> void:
 	body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body_label.custom_minimum_size.x = WIDTH - 80.0 - ICON_PX - 28.0
 	cost_label = _label(col, 32, UiStyle.AMBER)
-
-
-func _enter_tree() -> void:
-	if _scrim == null:
-		_scrim = ColorRect.new()
-		_scrim.color = Color(0.0, 0.0, 0.0, 0.45)
-		_scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_scrim.z_index = z_index - 1
-		_scrim.visible = false
-		get_parent().add_child.call_deferred(_scrim)
-		_scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	visibility_changed.connect(func() -> void:
-		if is_instance_valid(_scrim):
-			_scrim.visible = visible)
-
-
-func _exit_tree() -> void:
-	if is_instance_valid(_scrim):
-		_scrim.queue_free()
-	_scrim = null
+	# Top-level child drawn behind the card: containers skip top-level children, and it
+	# lives and dies with the card.
+	_scrim = ColorRect.new()
+	_scrim.color = Color(0.0, 0.0, 0.0, 0.45)
+	_scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_scrim.top_level = true
+	_scrim.show_behind_parent = true
+	add_child(_scrim)
 
 
 func _label(parent: Control, size: int, color: Color) -> Label:
@@ -83,6 +71,8 @@ func show_item(item: Resource, bottom_y: float, show_cost: bool = false) -> void
 	cost_label.text = "%dg" % cost
 	cost_label.visible = show_cost and cost > 0
 	visible = true
+	_scrim.global_position = Vector2.ZERO
+	_scrim.size = get_viewport_rect().size
 	reset_size()
 	var vw := get_viewport_rect().size.x
 	position = Vector2((vw - size.x) * 0.5, bottom_y - size.y)

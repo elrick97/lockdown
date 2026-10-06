@@ -146,7 +146,7 @@ func test_skip_sets_total_label_and_clears_effects() -> void:
 	cascade.play(bd, 50, 50 + bd.final_score, 350)
 	await wait_seconds(0.5)
 	cascade.skip()
-	assert_eq((parts[2] as Label).text, "Total: %d / 350" % (50 + bd.final_score))
+	assert_eq((parts[2] as Label).text, ScoreHud.total_text(50 + bd.final_score, 350))
 	assert_eq(hud.transient_count(), 0, "floats and sparks cleared")
 	assert_false(hud.stamp_label.visible, "stamp cleared")
 

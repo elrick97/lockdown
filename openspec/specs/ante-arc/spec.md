@@ -103,3 +103,14 @@ Once `run_won` or `run_lost` has fired, `AnteArc` SHALL ignore further `on_round
 - **WHEN** the player presses SKIP on ante 2
 - **THEN** `GoldLedger.gold` increases by `skip_reward_gold` and `current_ante` becomes 3
 
+### Requirement: Round rules are presented before play
+Each ante's special rule SHALL be stated in plain words before its first throw, through the throw screen's ante intro card:
+- Boss: the halved lock window, with its duration in seconds.
+- Risk: the skip reward next to the win reward.
+
+The rules themselves are unchanged.
+
+#### Scenario: Rules come from the tunables
+- **WHEN** `boss_window_scale` or `skip_reward_gold` changes
+- **THEN** the intro card text changes with it
+

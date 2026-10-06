@@ -25,6 +25,14 @@ var _shake_tween: Tween
 var _skip_hint: Label
 var _inspect: InspectCard
 var _urgency_label: Label
+## Ante intro card (add-ante-intro-card): target, reward and rule before throw 1.
+var _intro: ColorRect
+var _intro_title: Label
+var _intro_target: Label
+var _intro_reward: Label
+var _intro_rule: Label
+var _intro_play: Button
+var _brief: AnteBrief
 var _tray_tween: Tween
 var _scoring := ScoringEngine.new()
 var _bag: DiceBag
@@ -110,10 +118,11 @@ func _ready() -> void:
 	_felt.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_tray.add_child(_felt)
 	_felt.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_build_intro()
 	_skip_button = Button.new()
-	_skip_button.text = "SKIP RISK (+3g)"
+	_skip_button.text = "SKIP RISK (+%dg)" % _ante_config.skip_reward_gold
 	_skip_button.add_theme_font_size_override("font_size", 40)
-	add_child(_skip_button)
+	_intro.add_child(_skip_button)  # the risk trade-off lives on the intro card
 	_trinket_row = HBoxContainer.new()
 	_trinket_row.visible = false
 	add_child(_trinket_row)
@@ -175,12 +184,15 @@ func _ready() -> void:
 	_build_charm_row()
 	# Draw order: the end panel dims everything built above, and the focus cover
 	# stays on top of all of it.
+	move_child(_intro, -1)
 	move_child(_end_panel, -1)
 	move_child(_inspect, -1)  # inspect opens over the end panel too
 	move_child(_cover, -1)
 
 	_update_round_labels()
 	_hud.reset(_scoring_config.heat_max)  # idle HEAT: what a fast lock would earn
+	UiStyle.pickable(_ante_label, _reopen_intro)
+	_show_intro()
 	_status.text = "Tap THROW to roll the dice"
 
 
@@ -214,6 +226,14 @@ func _apply_layout() -> void:
 	# never show together, so they share the row above THROW.
 	if _skip_button != null:
 		_set_rect(_skip_button, 0.5, 0.0, 0.5, 0.0, -260.0, 1800.0, 260.0, 1930.0)
+	if _intro != null:
+		_intro.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_set_rect(_intro.get_node("IntroCard"), 0.0, 0.0, 1.0, 0.0, 60.0, 640.0, -60.0, 1360.0)
+		_set_rect(_intro_title, 0.0, 0.0, 1.0, 0.0, 40.0, 520.0, -40.0, 720.0)
+		_set_rect(_intro_target, 0.0, 0.0, 1.0, 0.0, 100.0, 760.0, -100.0, 920.0)
+		_set_rect(_intro_reward, 0.0, 0.0, 1.0, 0.0, 120.0, 960.0, -120.0, 1040.0)
+		_set_rect(_intro_rule, 0.0, 0.0, 1.0, 0.0, 120.0, 1070.0, -120.0, 1300.0)
+		_set_rect(_intro_play, 0.5, 1.0, 0.5, 1.0, -260.0, -300.0, 260.0, -120.0)
 	if _trinket_row != null:
 		_set_rect(_trinket_row, 0.0, 0.0, 1.0, 0.0, 40.0, 1800.0, -40.0, 1930.0)
 	if _skip_hint != null:
@@ -346,6 +366,7 @@ func _try_lock_at(point: Vector2) -> void:
 
 
 func _on_throw_pressed() -> void:
+	_intro.visible = false
 	_result.text = ""
 	_result.scale = Vector2.ONE  # reset in case previous cascade was interrupted
 	_hud.clear_transients()
@@ -412,9 +433,13 @@ func _update_round_labels() -> void:
 	var round_name := ""
 	if _arc.current_ante - 1 < _ante_config.round_names.size():
 		round_name = " — %s ROUND" % _ante_config.round_names[_arc.current_ante - 1].to_upper()
-	_ante_label.text = "ANTE %d / %d%s" % [_arc.current_ante, _ante_config.targets.size(), round_name]
-	_throw_label.text = "Throw %d / %d" % [_round.current_throw, _ante_config.throws_per_round]
-	_total_label.text = "Total: %d / %d" % [_round.total, _round.target]
+	_brief = AnteBrief.for_ante(_arc.current_ante, _ante_config, RunCoordinator.shop_config, _config)
+	var chip := " · " + _brief.short_rule if _brief.is_boss else ""
+	_ante_label.text = "ANTE %d / %d%s%s" % [_arc.current_ante, _ante_config.targets.size(), round_name, chip]
+	# The throw about to be made (or in progress): "Throw 1 of 3" before the first.
+	_throw_label.text = "Throw %d of %d" % [mini(_round.current_throw + 1, _ante_config.throws_per_round),
+		_ante_config.throws_per_round]
+	_total_label.text = ScoreHud.total_text(_round.total, _round.target)
 	if _hud != null:
 		_hud.set_target_fraction(float(_round.total) / float(maxi(_round.target, 1)))
 
@@ -572,6 +597,77 @@ func _on_run_lost() -> void:
 	_status.text = "GAME OVER."
 	_throw_button.disabled = true
 	_show_end_panel(false)
+
+
+## Ante intro card (ante-arc / throw-loop spec): the ante's target, reward and rule in
+## plain words before the first throw; PLAY sits exactly where THROW is.
+func _build_intro() -> void:
+	_intro = ColorRect.new()
+	_intro.color = Color(0.02, 0.01, 0.01, 0.78)
+	_intro.visible = false
+	add_child(_intro)
+	var card := Panel.new()
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.name = "IntroCard"
+	_intro.add_child(card)
+	_intro_title = _intro_label(52, UiStyle.AMBER)
+	ScoreHud.style_stamp(_intro_title, 60)
+	_intro_target = _intro_label(96, UiStyle.CREAM)
+	_intro_target.add_theme_color_override("font_outline_color", UiStyle.OUTLINE)
+	_intro_target.add_theme_constant_override("outline_size", 12)
+	_intro_reward = _intro_label(40, UiStyle.CREAM.darkened(0.08))
+	_intro_rule = _intro_label(40, UiStyle.AMBER)
+	_intro_rule.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_intro_play = Button.new()
+	_intro_play.text = "PLAY"
+	_intro_play.theme_type_variation = &"ThrowButton"
+	_intro_play.pressed.connect(func() -> void: _intro.visible = false)
+	_intro.add_child(_intro_play)
+
+
+func _intro_label(font_size: int, color: Color) -> Label:
+	var l := Label.new()
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", font_size)
+	l.add_theme_color_override("font_color", color)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_intro.add_child(l)
+	return l
+
+
+func _show_intro() -> void:
+	if _round.current_throw > 0 or _round.is_done:
+		return
+	_fill_intro()
+	_skip_button.visible = _brief.is_risk
+	_intro.visible = true
+	get_tree().process_frame.connect(_slam_intro_title, CONNECT_ONE_SHOT)
+
+
+func _slam_intro_title() -> void:
+	ScoreHud.slam(_intro_title, 1.8)
+
+
+## Tapping the ante label re-reads the brief between throws (never while the clock
+## runs); SKIP only appears before the first throw.
+func _reopen_intro() -> void:
+	var s := _controller.state
+	if s == ThrowController.State.TUMBLE or s == ThrowController.State.LOCK_WINDOW \
+			or s == ThrowController.State.REROLL or (_cascade != null and _cascade.is_playing()):
+		return
+	if _end_panel.visible:
+		return
+	_fill_intro()
+	_skip_button.visible = _brief.is_risk and _round.current_throw == 0
+	_intro.visible = true
+
+
+func _fill_intro() -> void:
+	_intro_title.text = _brief.title
+	_intro_target.text = "TARGET %d" % _brief.target
+	_intro_reward.text = _brief.reward
+	_intro_rule.text = _brief.rule
 
 
 ## End-of-run panel (run-flow spec): result, summary, NEW RUN / MENU. Sits above the

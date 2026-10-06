@@ -249,6 +249,6 @@ func _tick_score(value: float) -> void:
 
 func _tick_total(value: float) -> void:
 	if is_instance_valid(_total_label):
-		_total_label.text = "Total: %d / %d" % [roundi(value), _target]
+		_total_label.text = ScoreHud.total_text(roundi(value), _target)
 	if is_instance_valid(_hud) and _target > 0:
 		_hud.set_target_fraction(value / float(_target))

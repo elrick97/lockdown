@@ -48,6 +48,7 @@ var _build_caption: Label
 var _dice_caption: Label
 var _dice_label: Label
 var _inspect: InspectCard
+var _next_label: Label
 ## Inspect card bottom edges (canvas units): in the gap under your build / above the offers.
 const INSPECT_BUILD_Y := 990.0
 const INSPECT_OFFER_Y := 1090.0
@@ -91,6 +92,15 @@ func _ready() -> void:
 	_shop_config = RunCoordinator.shop_config
 	_inspect = InspectCard.new()
 	add_child(_inspect)
+	# What's next (add-ante-intro-card): shop with the coming target and rule in mind.
+	_next_label = Label.new()
+	_next_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_next_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_next_label.add_theme_font_size_override("font_size", 32)
+	_next_label.add_theme_color_override("font_color", UiStyle.AMBER)
+	_next_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_next_label)
+	_next_label.text = next_ante_text()
 	_apply_layout()
 	_reroll_button.pressed.connect(_on_reroll_pressed)
 	_continue_button.pressed.connect(_on_continue_pressed)
@@ -114,6 +124,8 @@ func _apply_layout() -> void:
 		_set_rect(_owned_label, 0.0, 0.0, 1.0, 0.0, 60.0, 450.0, -60.0, 540.0)
 		_set_rect(_dice_caption, 0.0, 0.0, 1.0, 0.0, 60.0, 600.0, -60.0, 640.0)
 		_set_rect(_dice_label, 0.0, 0.0, 1.0, 0.0, 60.0, 645.0, -60.0, 780.0)
+	if _next_label != null:
+		_set_rect(_next_label, 0.0, 0.0, 1.0, 0.0, 60.0, 830.0, -60.0, 960.0)
 	_set_rect(_status_label, 0.0, 0.0, 1.0, 0.0, 40.0, 990.0, -40.0, 1090.0)
 	_set_rect(_offer_container, 0.0, 0.0, 1.0, 0.0, 40.0, 1100.0, -40.0, 1960.0)
 	_set_rect(_reroll_button, 0.0, 1.0, 0.5, 1.0, 40.0, -300.0, -12.0, -120.0)
@@ -274,6 +286,18 @@ func _on_reroll_pressed() -> void:
 
 func _on_continue_pressed() -> void:
 	RunCoordinator.on_shop_continued()
+
+
+## "NEXT: ANTE 3 · BOSS · TARGET 700 · ½ WINDOWS" for the ante the shop leads into.
+func next_ante_text() -> String:
+	var arc := RunCoordinator.arc
+	if arc == null:
+		return ""
+	var b := AnteBrief.for_ante(arc.current_ante, preload("res://resources/ante_arc.tres"),
+		_shop_config if _shop_config != null else RunCoordinator.shop_config,
+		preload("res://resources/throw_config.tres"))
+	var text := "NEXT: %s · TARGET %d" % [b.title, b.target]
+	return text + (" · " + b.short_rule if b.is_boss else "")
 
 
 func _caption(text: String) -> Label:
