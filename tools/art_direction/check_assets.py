@@ -22,7 +22,8 @@ UI_PX = {f"button_{k}_{s}.png": (256, 128) for k in ("primary", "secondary")
 CHARMS = Path(__file__).resolve().parents[2] / "assets" / "charms"  # add-charm-icons
 CHARM_COUNT = 12
 UI_PX.update({"panel.png": (256, 256), "plaque.png": (256, 96), "socket.png": (160, 160),
-              "timer_frame.png": (512, 56), "timer_fill.png": (64, 32)})
+              "timer_frame.png": (512, 56), "timer_fill.png": (64, 32),
+              "start_hero.png": (768, 640)})  # add-start-hero-art
 DIE_TRIS_MAX = 300
 BUDGET_PX = {"die_": (768, 512), "felt": (1024, 1024), "rim": (1024, 1024), "charm": (512, 512),
              "table": (1024, 2048)}

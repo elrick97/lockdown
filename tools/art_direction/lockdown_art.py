@@ -1980,3 +1980,121 @@ def export_charm_icons(only=None):
         render_to(os.path.join(CHARM_DIR, cid + ".png"), (CHARM_PX, CHARM_PX), cam, transparent=True)
         written.append(cid + ".png")
     return written
+
+
+# ========================================================= start hero (add-start-hero-art)
+HERO_PX = (768, 640)
+
+
+def _hero_die_mat(kind):
+    """Material from the shipped production atlas (no new textures written)."""
+    imgs = []
+    for part, noncolor in (("albedo", False), ("normal", True), ("orm", True)):
+        img = bpy.data.images.load(os.path.join(PROD_DIR, f"{kind}_{part}.png"), check_existing=True)
+        if noncolor:
+            img.colorspace_settings.name = "Non-Color"
+        imgs.append(img)
+    return pbr_material(f"M_Hero_{kind}", *imgs)
+
+
+def export_start_hero():
+    """Start-screen hero (run-flow mark): a locked Bone die glowing in its amber ring with
+    two dice caught mid-tumble above it, under the Smoke Room lamp. No name, no logo."""
+    pal = DIRECTIONS[PROD_DIRECTION]["pal"]
+    reset_scene()
+    setup_render({"samples": 96})
+    make_world_and_lights({"ambient": ((0.42, 0.28, 0.17), 0.35), "lights": [
+        {"type": "SPOT", "color": (1.0, 0.86, 0.66), "energy": 900.0, "loc": (0.3, -1.2, 6.0),
+         "dir": (-0.05, 0.2, -1.0), "extra": {"spot_size": 0.9, "spot_blend": 0.6, "shadow_soft_size": 0.4}},
+        {"type": "AREA", "color": (1.0, 0.62, 0.3), "energy": 90.0, "loc": (-3.0, 1.5, 1.5),
+         "dir": (1.0, -0.4, -0.3), "extra": {"size": 2.0}},
+        {"type": "AREA", "color": (0.6, 0.7, 1.0), "energy": 25.0, "loc": (3.0, 2.0, 2.0),
+         "dir": (-1.0, -0.6, -0.4), "extra": {"size": 2.0}},
+    ]})
+    bone = _hero_die_mat("bone")
+    me = make_die_mesh("HeroDie")
+    s = 1.0 / DIE  # dice at 1 world unit
+
+    def die(name, top, yaw, loc, tilt=(0.0, 0.0, 0.0), scale=1.0):
+        ob = _mesh_obj(name, me, (bone,))
+        rot = Euler(tilt).to_matrix() @ die_rotation(top, yaw)
+        ob.matrix_world = Matrix.Translation(loc) @ rot.to_4x4() @ Matrix.Scale(s * scale, 4)
+        return ob
+
+    # The locked die, front and centre, six up.
+    die("Locked", 6, 28.0, (0.0, 0.0, 0.5))
+    # Two dice tumbling above and behind it.
+    die("TumbleL", 5, 10.0, (-1.05, 0.9, 1.55), (0.6, -0.5, 0.3), 0.86)
+    die("TumbleR", 2, -20.0, (1.1, 1.1, 1.85), (-0.4, 0.7, -0.5), 0.8)
+
+    # Amber lock ring around the locked die's base, glowing.
+    glow = _ui_mat("RingGlow", (1.0, 0.55, 0.12), rough=0.3, emit=((1.0, 0.36, 0.035), 1.05))
+    brass = _ui_mat("Brass", pal["brass"], metal=0.95, rough=0.28)
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.98, minor_radius=0.045, major_segments=96,
+                                     minor_segments=12, location=(0, 0, 0.03))
+    ring = bpy.context.active_object
+    ring.data.materials.append(glow)
+    for p in ring.data.polygons:
+        p.use_smooth = True
+    bpy.ops.mesh.primitive_torus_add(major_radius=1.1, minor_radius=0.03, major_segments=96,
+                                     minor_segments=10, location=(0, 0, 0.02))
+    outer = bpy.context.active_object
+    outer.data.materials.append(brass)
+    for p in outer.data.polygons:
+        p.use_smooth = True
+    # A few amber sparks thrown off the lock.
+    spark = _ui_mat("Spark", (1.0, 0.55, 0.15), emit=((1.0, 0.38, 0.05), 1.3))
+    rng = np.random.default_rng(11)
+    for i in range(14):
+        a = rng.uniform(0, 2 * math.pi)
+        r = rng.uniform(1.15, 1.9)
+        z = rng.uniform(0.05, 1.3)
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=rng.uniform(0.022, 0.05), segments=10, ring_count=6,
+                                             location=(r * math.cos(a), r * math.sin(a) * 0.7, z))
+        bpy.context.active_object.data.materials.append(spark)
+
+    # Bloom-free glow halo: a soft emissive disc under the ring.
+    bpy.ops.mesh.primitive_circle_add(vertices=64, radius=1.45, fill_type="TRIFAN", location=(0, 0, 0.0))
+    disc = bpy.context.active_object
+    disc.data.materials.append(_halo_material())
+
+    cam_d = bpy.data.cameras.new("HeroCam")
+    cam_d.lens = 50.0
+    cam = _link(bpy.data.objects.new("HeroCam", cam_d))
+    cam.location = (0.0, -6.4, 4.6)
+    cam.rotation_euler = (Vector((0.0, 0.45, 0.85)) - cam.location).to_track_quat("-Z", "Y").to_euler()
+    path = os.path.join(UI_DIR, "start_hero.png")
+    render_to(path, HERO_PX, cam, transparent=True)
+    return path
+
+
+def _halo_material():
+    """Radial amber glow fading to transparent (stands in for bloom on a transparent render)."""
+    m = _new_mat("Halo")
+    nt = m.node_tree
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    grad = nt.nodes.new("ShaderNodeTexGradient")
+    grad.gradient_type = "SPHERICAL"
+    mp = nt.nodes.new("ShaderNodeMapping")
+    mp.inputs["Scale"].default_value = (1 / 1.45, 1 / 1.45, 1.0)
+    em = nt.nodes.new("ShaderNodeEmission")
+    em.inputs["Color"].default_value = (1.0, 0.3, 0.03, 1.0)
+    em.inputs["Strength"].default_value = 0.9
+    tr = nt.nodes.new("ShaderNodeBsdfTransparent")
+    mix = nt.nodes.new("ShaderNodeMixShader")
+    ramp = nt.nodes.new("ShaderNodeMath")
+    ramp.operation = "POWER"
+    ramp.inputs[1].default_value = 2.2
+    nt.links.new(tc.outputs["Object"], mp.inputs["Vector"])
+    nt.links.new(mp.outputs["Vector"], grad.inputs["Vector"])
+    nt.links.new(grad.outputs["Fac"], ramp.inputs[0])
+    nt.links.new(ramp.outputs[0], mix.inputs["Fac"])
+    nt.links.new(tr.outputs[0], mix.inputs[1])
+    nt.links.new(em.outputs[0], mix.inputs[2])
+    nt.links.new(mix.outputs[0], out.inputs["Surface"])
+    try:
+        m.surface_render_method = "BLENDED"
+    except (AttributeError, TypeError):
+        pass
+    return m

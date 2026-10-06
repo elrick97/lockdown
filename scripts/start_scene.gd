@@ -1,19 +1,21 @@
 extends Control
-## Start screen (run-flow spec): pictogram mark (no name or logo until PRD Q4), a
+## Start screen (run-flow spec): Blender-rendered hero mark (no name or logo until PRD Q4), a
 ## four-line how-to, and PLAY in the thumb zone. Layout is set in code: hand-authored
 ## scene anchors don't survive the Android export (see project notes).
 
 const THROW_SCENE := "res://scenes/throw/throw_scene.tscn"
-const BRASS := UiStyle.BRASS
-const AMBER := UiStyle.AMBER
+const HERO := preload("res://assets/ui/start_hero.png")
+## Idle float of the hero: amplitude (px) and period (s).
+const HERO_BOB_PX := 14.0
+const HERO_BOB_S := 3.2
 const HOW_TO := [
 	"Throw, then tap dice to lock them.",
-	"Lock before the timer empties: the rest re-roll.",
+	"Beat the timer: unlocked dice re-roll.",
 	"Only locked dice score. Make combos.",
 	"Lock fast: speed heats up your score.",
 ]
 
-var _mark: Control
+var _mark: TextureRect
 var _how_to: Label
 var _play_button: Button
 var _how_to_card: Panel
@@ -24,9 +26,11 @@ func _ready() -> void:
 	SmokeOverlay.add_backdrop(self)
 	SmokeOverlay.add_to(self)
 
-	_mark = Control.new()
+	_mark = TextureRect.new()
+	_mark.texture = HERO
+	_mark.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_mark.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_mark.draw.connect(_draw_mark)
 	add_child(_mark)
 
 	_how_to_card = Panel.new()
@@ -36,6 +40,7 @@ func _ready() -> void:
 	_how_to.text = "\n".join(HOW_TO)
 	_how_to.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_how_to.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_how_to.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_how_to.add_theme_font_size_override("font_size", 46)
 	_how_to.add_theme_constant_override("line_spacing", 18)
 	add_child(_how_to)
@@ -48,15 +53,15 @@ func _ready() -> void:
 
 	_apply_layout()
 	get_viewport().size_changed.connect(_apply_layout)
+	_start_idle()
 
 
 func _apply_layout() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_place(_mark, 0.5, 0.0, 0.5, 0.0, -220.0, 300.0, 220.0, 740.0)
-	_place(_how_to_card, 0.0, 0.0, 1.0, 0.0, 50.0, 860.0, -50.0, 1500.0)
-	_place(_how_to, 0.0, 0.0, 1.0, 0.0, 100.0, 900.0, -100.0, 1460.0)
+	_place(_mark, 0.5, 0.0, 0.5, 0.0, -540.0, 60.0, 540.0, 900.0)
+	_place(_how_to_card, 0.0, 0.0, 1.0, 0.0, 50.0, 920.0, -50.0, 1420.0)
+	_place(_how_to, 0.0, 0.0, 1.0, 0.0, 100.0, 950.0, -100.0, 1390.0)
 	_place(_play_button, 0.5, 1.0, 0.5, 1.0, -280.0, -420.0, 280.0, -200.0)
-	_mark.queue_redraw()
 
 
 func _place(c: Control, al: float, at: float, ar: float, ab: float,
@@ -71,20 +76,16 @@ func _place(c: Control, al: float, at: float, ar: float, ab: float,
 	c.offset_bottom = ob
 
 
-## Die outline with five pips, crossed by a bolt: brass and amber line art.
-func _draw_mark() -> void:
-	var s := _mark.size
-	var die := Rect2(s * Vector2(0.08, 0.12), s * Vector2(0.62, 0.62))
-	_mark.draw_rect(die, BRASS, false, 10.0)
-	var pip_r := die.size.x * 0.07
-	for p: Vector2 in [Vector2(0.25, 0.25), Vector2(0.75, 0.25), Vector2(0.5, 0.5),
-			Vector2(0.25, 0.75), Vector2(0.75, 0.75)]:
-		_mark.draw_circle(die.position + die.size * p, pip_r, BRASS)
-	var bolt := PackedVector2Array()
-	for p: Vector2 in [Vector2(0.62, 0.02), Vector2(0.92, 0.02), Vector2(0.74, 0.44),
-			Vector2(0.98, 0.44), Vector2(0.50, 0.98), Vector2(0.64, 0.56), Vector2(0.40, 0.56)]:
-		bolt.append(p * s)
-	_mark.draw_colored_polygon(bolt, AMBER)
+## The hero floats gently (the dice "hang" mid-throw) so the screen never sits dead.
+func _start_idle() -> void:
+	var t := create_tween().set_loops()
+	t.tween_property(_mark, "position:y", _mark.position.y - HERO_BOB_PX, HERO_BOB_S * 0.5) 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	t.tween_property(_mark, "position:y", _mark.position.y, HERO_BOB_S * 0.5) 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	# PLAY breathes, so the one thing to do next is obvious.
+	_play_button.pivot_offset = _play_button.size / 2.0
+	var p := create_tween().set_loops()
+	p.tween_property(_play_button, "scale", Vector2.ONE * 1.045, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	p.tween_property(_play_button, "scale", Vector2.ONE, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
 func _on_play_pressed() -> void:

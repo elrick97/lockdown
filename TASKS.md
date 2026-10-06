@@ -64,6 +64,7 @@
 - [x] Number cascade animation on scoring `add-score-cascade`
 - [x] Balatro-style score feedback: Chips × Mult × Heat build-up, tiered stamp/shake/sparks, target bar, lock punch, timer urgency, live Heat `add-score-feedback` *(owner direction 2026-10-06)*
 - [x] Overlay: drifting edge fog replaces flickering film grain `add-smoke-fog-overlay` *(owner feedback 2026-10-06)*
+- [x] Start screen: Blender-rendered hero, idle float, PLAY pulse, tighter how-to `add-start-hero-art`
 - [x] Art direction exploration: 3 style frames, pick one `add-art-direction` *(picked B "Smoke Room", logged in PRD §5)*
 - [x] UI layout pass: thumb-zone audit `add-smoke-room-ui` *(audited locally per owner rule: every control ≥ 48 dp in the thumb zone, tested)*
 - [x] Placeholder → first-pass dice/charm art for slice content `add-smoke-room-dice` `add-smoke-room-table` `add-smoke-room-ui-art` `add-charm-icons`

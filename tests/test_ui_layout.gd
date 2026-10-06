@@ -144,6 +144,14 @@ func test_overlay_is_drifting_fog_not_grain() -> void:
 	assert_true(names.has("fog_drift") and names.has("vignette"))
 
 
+func test_start_screen_shows_hero_and_unwrapped_how_to() -> void:
+	var start: Control = START_SCENE.instantiate()
+	add_child_autofree(start)
+	await wait_process_frames(2)
+	assert_eq(start._mark.texture.resource_path, "res://assets/ui/start_hero.png", "rendered hero mark")
+	assert_lte(start._how_to.get_line_count(), 4, "how-to fits in four lines without wrapping")
+
+
 func test_felt_fills_the_tray_behind_the_dice() -> void:
 	var scene := _throw_scene()
 	await wait_frames(2)
