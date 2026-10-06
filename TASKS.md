@@ -77,6 +77,7 @@
 - [x] Ante intro card (target, reward, boss/risk rule), boss chip, clearer HUD copy, shop NEXT strip `add-ante-intro-card` *(audit B1/B2/C4/F3)*
 - [x] Round-cleared cash-out panel itemising gold (risk skip now applies interest per spec) `add-round-cashout` *(audit D3)*
 - [x] Pause menu (how to play, combos, settings, abandon run) + persisted settings (shake, score speed, reduced motion, haptics) `add-pause-settings` *(audit H3/A1/H5)*
+- [x] Wording pass: item text matches the rules, progress status copy, captions ≥ 30 px `copy-terminology-pass` *(audit E2/F5/D5/H1/H2)*
 - [x] Art direction exploration: 3 style frames, pick one `add-art-direction` *(picked B "Smoke Room", logged in PRD §5)*
 - [x] UI layout pass: thumb-zone audit `add-smoke-room-ui` *(audited locally per owner rule: every control ≥ 48 dp in the thumb zone, tested)*
 - [x] Placeholder → first-pass dice/charm art for slice content `add-smoke-room-dice` `add-smoke-room-table` `add-smoke-room-ui-art` `add-charm-icons`
