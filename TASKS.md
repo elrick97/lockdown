@@ -81,6 +81,7 @@
 - [x] End-of-run stats: missed/beat by, best combo, rounds, gold, copyable seed `add-run-summary-stats` *(audit G1–G3)*
 - [x] Shop clarity: NEED/SLOTS FULL/SOLD, purchase fly-in, YOUR DICE icon row `add-shop-clarity` *(audit F1/F2/F4)*
 - [x] Smoke-wipe transitions between screens `add-scene-transitions` *(audit A3)*
+- [x] First-time tips (six one-liners, once each, never blocking; toggle + reset) `add-first-time-tips` *(audit A1)*
 - [x] Art direction exploration: 3 style frames, pick one `add-art-direction` *(picked B "Smoke Room", logged in PRD §5)*
 - [x] UI layout pass: thumb-zone audit `add-smoke-room-ui` *(audited locally per owner rule: every control ≥ 48 dp in the thumb zone, tested)*
 - [x] Placeholder → first-pass dice/charm art for slice content `add-smoke-room-dice` `add-smoke-room-table` `add-smoke-room-ui-art` `add-charm-icons`

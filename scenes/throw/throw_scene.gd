@@ -44,6 +44,7 @@ var _pause_button: TextureButton
 var _pause_menu: PauseMenu
 var _paused_label: Label
 var _menu_open := false
+var _coach: CoachMark
 var _tray_tween: Tween
 var _scoring := ScoringEngine.new()
 var _bag: DiceBag
@@ -184,6 +185,8 @@ func _ready() -> void:
 	RunCoordinator.cashout_ready.connect(_show_cashout)
 	_inspect = InspectCard.new()
 	add_child(_inspect)
+	_coach = CoachMark.new()
+	add_child(_coach)
 	# Score readout above the table, below the end panel and focus cover (score-cascade spec).
 	_hud = ScoreHud.new()
 	add_child(_hud)
@@ -220,6 +223,7 @@ func _ready() -> void:
 	move_child(_cashout, -1)
 	move_child(_end_panel, -1)
 	move_child(_inspect, -1)  # inspect opens over the end panel too
+	move_child(_coach, -1)
 	move_child(_cover, -1)
 	move_child(_pause_menu, -1)
 
@@ -350,6 +354,8 @@ func _update_visuals() -> void:
 			_hud.set_heat(Heat.from_remaining(_controller.projected_window_remaining(),
 				_scoring_config, _effective_window_s))
 			_update_urgency(left)
+			if _hud.heat_label.text != "×%.2f" % _scoring_config.heat_max:
+				_tip("heat", "Heat: lock sooner for a bigger multiplier.", _hud.heat_label.get_parent())
 		_:
 			pass
 
@@ -495,6 +501,10 @@ func _update_round_labels() -> void:
 func _on_window_started(window_index: int) -> void:
 	_tumbler.reveal(_controller.faces, _controller.locked)
 	_refresh_lock_preview(false)
+	# First-time tips (ui-theme spec): one line, once, never blocking.
+	if _brief != null and _brief.is_boss:
+		_tip("boss", "Boss: lock windows are half as long.", _timer_track)
+	_tip("first_window", "Tap a die to lock it. Locks are final.", _charm_row)
 
 
 ## Live locked-set preview (throw-loop spec): the best combo of the dice locked so
@@ -526,6 +536,7 @@ func _on_die_locked(die_index: int, _window_index: int) -> void:
 	_tumbler.lock_die(die_index, _controller.faces[die_index])
 	if _controller.state == ThrowController.State.LOCK_WINDOW:
 		_refresh_lock_preview(true)
+		_tip("first_lock", "Locked! The rest re-roll when the timer runs out.", _charm_row)
 	# Lock feedback (throw-loop spec): the die punches and the table nudges.
 	_tumbler.punch_die(die_index, _fx.lock_punch_scale, _fx.lock_punch_s)
 	_nudge_tray(_fx.lock_shake_px, _fx.lock_shake_s)
@@ -599,6 +610,10 @@ func _on_resolved(result: ThrowResult) -> void:
 	_tumbler.reveal(_controller.faces, _controller.locked)
 	var breakdown := _scoring.score(result, _scoring_config, _effective_window_s, false, RunCoordinator.inventory)
 	RunCoordinator.record_combos(breakdown.combos)
+	if not breakdown.combos.is_empty():
+		var c: Dictionary = breakdown.combos[0]
+		_tip("first_combo", "%s = %d chips × %d mult. Bigger combos score more." % [
+			String(c.name).to_upper(), int(c.chips), int(c.mult)], _hud.chips_label.get_parent())
 	if not breakdown.combos.is_empty() and _sfx_combo != null and _sfx_combo.stream != null:
 		_sfx_combo.play()
 	var old_total := _round.total
@@ -1000,6 +1015,15 @@ func _notification(what: int) -> void:
 			_on_focus_lost()
 		NOTIFICATION_APPLICATION_FOCUS_IN, NOTIFICATION_APPLICATION_RESUMED, NOTIFICATION_WM_WINDOW_FOCUS_IN:
 			_on_focus_returned()
+
+
+func _tip(id: String, text: String, anchor: Control, rect: Rect2 = Rect2()) -> void:
+	if _coach.visible:
+		return
+	var st := get_tree().root.get_node_or_null(^"Settings")
+	if st == null or not st.take_tip(id):
+		return
+	_coach.show_tip(text, rect if rect.size != Vector2.ZERO else anchor.get_global_rect())
 
 
 ## Manual pause (throw-loop spec): the focus-loss pause plus the pause menu.

@@ -30,6 +30,7 @@ func _run() -> void:
 	# Scene swaps are instant in the harness (it drives scenes itself); the wipe gets
 	# its own scenario below.
 	root.get_node("SceneFader").instant = true
+	root.get_node("Settings").tips_enabled = false  # tips get their own scenario
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
 	# build/ holds local output only; keep Godot from importing its screenshots.
 	FileAccess.open("res://build/.gdignore", FileAccess.WRITE).close()
@@ -42,6 +43,7 @@ func _run() -> void:
 	await _scenario_charm_icons()
 	await _scenario_fog()
 	await _scenario_transition()
+	await _scenario_tips()
 	await _scenario_run_flow()
 	_report.append("\n%d check(s) failed" % _failures)
 	var f := FileAccess.open(OUT_DIR + "report.md", FileAccess.WRITE)
@@ -426,6 +428,27 @@ func _scenario_transition() -> void:
 	_check(current_scene.scene_file_path == THROW_SCENE and not fader.rect.visible,
 		"the throw screen is revealed and taps work again")
 	fader.instant = true
+
+
+func _scenario_tips() -> void:
+	_section("add-first-time-tips")
+	var st := root.get_node("Settings")
+	st.tips_enabled = true
+	st.seen_tips.clear()
+	var scene := await _load_run(1, Callable())
+	scene._intro.visible = false
+	_press(scene._throw_button)
+	await _wait(func() -> bool: return scene._controller.state == ThrowController.State.LOCK_WINDOW)
+	await process_frame
+	_check(scene._coach.visible and "Tap a die" in scene._coach.label.text, "First lock window shows the lock tip")
+	var t_tip := Time.get_ticks_msec()
+	await _wait(func() -> bool: return Time.get_ticks_msec() - t_tip >= 300)
+	await _screenshot("tip_first_window")
+	_tap_die(scene, 0)
+	await process_frame
+	_check(scene._controller.locked[0], "The tap locks the die through the tip")
+	_check(st.seen_tips.has("first_window"), "Tip remembered as seen")
+	st.tips_enabled = false
 
 
 # ----------------------------------------------------------------- helpers

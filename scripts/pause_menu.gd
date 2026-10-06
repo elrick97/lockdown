@@ -118,6 +118,8 @@ func _show(p: StringName) -> void:
 			_setting(Settings.speed_label, Settings.cycle_speed)
 			_setting(Settings.motion_label, Settings.toggle_reduced_motion)
 			_setting(Settings.haptics_label, Settings.toggle_haptics)
+			_setting(Settings.tips_label, Settings.toggle_tips)
+			_setting(func() -> String: return "Show tips again", Settings.reset_tips)
 			if settings_only:
 				_button("DONE", close, true)
 			else:

@@ -95,6 +95,11 @@ func _ready() -> void:
 	_shop_config = RunCoordinator.shop_config
 	_inspect = InspectCard.new()
 	add_child(_inspect)
+	var coach := CoachMark.new()
+	add_child(coach)
+	if Settings.take_tip("first_shop"):
+		coach.show_tip.call_deferred("Charms change how you score. Tap any icon to read it.",
+			Rect2(40.0, 1100.0, 1000.0, 860.0))
 	# What's next (add-ante-intro-card): shop with the coming target and rule in mind.
 	_next_label = Label.new()
 	_next_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

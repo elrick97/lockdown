@@ -14,11 +14,19 @@ var shake: float = 1.0
 var cascade_speed: float = 1.0
 var reduced_motion: bool = false
 var haptics: bool = true
+## First-time tips (add-first-time-tips): on/off and which ones were already shown.
+var tips_enabled: bool = true
+var seen_tips: Array[String] = []
 ## Tests set this so they never touch the player's real settings file.
 var persist := true
 
 
 func _ready() -> void:
+	# Headless tests and the playthrough harness never read or write the player's file.
+	for arg in OS.get_cmdline_args():
+		if arg.contains("gut_cmdln") or arg.contains("playthrough"):
+			persist = false
+			return
 	load_settings()
 
 
@@ -47,6 +55,29 @@ func toggle_haptics() -> void:
 	_commit()
 
 
+func toggle_tips() -> void:
+	tips_enabled = not tips_enabled
+	_commit()
+
+
+## True (and marks it seen) the first time a tip may show; false after, or when off.
+func take_tip(id: String) -> bool:
+	if not tips_enabled or seen_tips.has(id):
+		return false
+	seen_tips.append(id)
+	_commit()
+	return true
+
+
+func reset_tips() -> void:
+	seen_tips.clear()
+	_commit()
+
+
+func tips_label() -> String:
+	return "Tips: " + ("On" if tips_enabled else "Off")
+
+
 func shake_label() -> String:
 	return "Screen shake: %d%%" % roundi(shake * 100.0)
 
@@ -68,6 +99,8 @@ func reset_defaults() -> void:
 	cascade_speed = 1.0
 	reduced_motion = false
 	haptics = true
+	tips_enabled = true
+	seen_tips.clear()
 	changed.emit()
 
 
@@ -81,6 +114,8 @@ func load_settings() -> void:
 	cascade_speed = c if SPEED_STEPS.has(c) else 1.0
 	reduced_motion = bool(cf.get_value("feel", "reduced_motion", false))
 	haptics = bool(cf.get_value("feel", "haptics", true))
+	tips_enabled = bool(cf.get_value("tips", "enabled", true))
+	seen_tips.assign(cf.get_value("tips", "seen", []))
 	changed.emit()
 
 
@@ -93,4 +128,6 @@ func _commit() -> void:
 	cf.set_value("feel", "cascade_speed", cascade_speed)
 	cf.set_value("feel", "reduced_motion", reduced_motion)
 	cf.set_value("feel", "haptics", haptics)
+	cf.set_value("tips", "enabled", tips_enabled)
+	cf.set_value("tips", "seen", seen_tips)
 	cf.save(PATH)
