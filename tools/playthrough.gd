@@ -27,6 +27,8 @@ func _run() -> void:
 	_rc = root.get_node("RunCoordinator")
 	_rng = root.get_node("RngService")
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
+	# build/ holds local output only; keep Godot from importing its screenshots.
+	FileAccess.open("res://build/.gdignore", FileAccess.WRITE).close()
 	await _scenario_dice_materials()
 	await _scenario_carving()
 	await _scenario_trinkets()
