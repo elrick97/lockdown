@@ -33,7 +33,7 @@ The exported game SHALL keep its portrait 1080×2400 layout (letterboxed in wide
 - **THEN** the game pauses behind the cover and resumes with the 3-2-1 countdown
 
 ### Requirement: Deployed to GitHub Pages from main
-A GitHub Actions workflow SHALL, on every push to `main`, check out the repository with only the game's LFS assets (`assets/dice/*`; the excluded style-frame archive is not downloaded and is kept out of the import), download the official Godot 4.6.3 editor and export templates, export the `Web` preset, and deploy `build/web/` to GitHub Pages using only GitHub's own actions. Build output SHALL NOT be committed.
+A GitHub Actions workflow SHALL, on every push to `main`, check out the repository with only the game's LFS assets (`assets/dice/*`, `assets/table/*`; the excluded style-frame archive is not downloaded and is kept out of the import), download the official Godot 4.6.3 editor and export templates, export the `Web` preset, and deploy `build/web/` to GitHub Pages using only GitHub's own actions. Build output SHALL NOT be committed.
 
 #### Scenario: Push deploys
 - **WHEN** a commit is pushed to `main`
