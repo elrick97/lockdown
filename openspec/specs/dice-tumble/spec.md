@@ -4,9 +4,7 @@
 The invariants every tumble presentation must honor: faces fixed before motion, time-based settling, and gameplay unaffected by the renderer.
 
 The tumble is the presentation of the throw-loop Tumble/Reroll phases. This capability captures only the invariants both spike renderers must honor; the winning renderer's implementation details are intentionally out of scope (a spike yields a decision, not a behavior contract). Tunable: `tumble_duration_s` (current default on `ThrowConfig`).
-
 ## Requirements
-
 ### Requirement: Tumble animates to predetermined faces
 The tumble SHALL animate each unlocked die from a scrambled/in-motion state to its predetermined face, where the face was already drawn from the seeded RNG before the tumble began. The animation SHALL NOT read, consume, or influence the RNG, and SHALL NOT determine or alter any face.
 
@@ -29,16 +27,43 @@ The tumble SHALL reach its settled state (all animating dice showing their final
 - **WHEN** the same tumble runs under different frame rates
 - **THEN** the wall-clock settle time is equivalent (the animation is time-based, not frame-counted)
 
-### Requirement: Selectable tumble renderer
-The presentation SHALL expose a selectable tumble renderer so the same seeded throw can be rendered by either spike approach (2D sprite or 3D SubViewport) without changing gameplay code. Renderer selection SHALL live in the presentation layer only; `ThrowController` and scoring SHALL be unaffected by the choice.
-
-#### Scenario: Swap renderer, same outcome
-- **WHEN** the active tumble renderer is switched between the 2D and 3D approaches for the same seed
-- **THEN** the faces, lock behavior, and score are identical; only the on-screen presentation differs
-
 ### Requirement: Locked dice do not tumble
 Dice locked in a previous window SHALL retain their faces and SHALL NOT animate during a re-roll tumble; only unlocked dice tumble to new predetermined faces.
 
 #### Scenario: Re-roll tumbles only unlocked dice
 - **WHEN** a re-roll tumble begins with some dice locked
 - **THEN** the locked dice are visually static on their existing faces and only the unlocked dice animate
+
+### Requirement: Dice land on their face by orientation
+Each die SHALL be a single six-face mesh (standard layout, art-direction spec). The tumble SHALL end with each die oriented so its predetermined face points up, turned about the vertical axis by a yaw derived from the die's slot index alone. The start orientation and spin SHALL also derive from the slot index. Presentation SHALL NOT read the RNG; faces stay fixed before motion (existing requirements unchanged).
+
+#### Scenario: Every face lands up
+- **WHEN** a die settles on face v (1–6) in any slot
+- **THEN** the mesh's face-v normal points straight up (within 1°), and the face's pips read upright to the tilted camera
+
+#### Scenario: Same throw, same picture
+- **WHEN** the same faces are tumbled twice in the same slots
+- **THEN** the settled orientations are identical, and the RNG streams are untouched by either tumble
+
+### Requirement: Taps resolve against the dice as drawn
+The tumble renderer SHALL provide each die's tap rectangle as the screen-space bounds of the die's projected mesh under the tilted orthographic camera (`camera_tilt_deg`, art-direction spec), so tap forgiveness (throw-loop spec) measures from what the player sees. Each settled die's rectangle SHALL be at least `die_min_px` (126 px) on both sides at base resolution, and rectangles of settled dice SHALL NOT overlap.
+
+#### Scenario: Tap the visible die
+- **WHEN** the player taps the center of a settled die as drawn
+- **THEN** that die locks
+
+#### Scenario: Tap targets meet the minimum size
+- **WHEN** a full 8-die tray has settled
+- **THEN** every die's tap rectangle is at least 126 × 126 px and no two overlap
+
+### Requirement: Die states read in the Smoke Room language
+Locked dice SHALL show an amber ring (`palette_accent`) on the floor under the die and keep their material color. Dead slots (shattered Glass) SHALL be dimmed and static. The score cascade's per-die flash SHALL be an amber pulse. Every die SHALL have a soft contact (blob) shadow. These states SHALL use unshaded or textured quads, not real-time shadows.
+
+#### Scenario: Locked die stays readable
+- **WHEN** a Glass die is locked
+- **THEN** an amber ring appears under it and the die keeps its Glass look (no tint)
+
+#### Scenario: Dead slot
+- **WHEN** a Glass die shatters
+- **THEN** it is drawn dimmed, does not tumble, and shows no ring
+

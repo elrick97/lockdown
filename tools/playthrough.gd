@@ -37,7 +37,11 @@ func _run() -> void:
 	var f := FileAccess.open(OUT_DIR + "report.md", FileAccess.WRITE)
 	f.store_string("\n".join(_report) + "\n")
 	f.close()
-	print("\n".join(_report))
+	# Free the last scene before quitting, so exit doesn't report its textures as leaked.
+	if current_scene != null:
+		current_scene.queue_free()
+	await process_frame
+	await process_frame
 	quit(_failures)
 
 
@@ -351,7 +355,7 @@ func _screenshot(label: String) -> void:
 
 
 func _section(name: String) -> void:
-	_report.append("\n## %s" % name)
+	_log("\n## %s" % name)
 
 
 func _check(ok: bool, what: String) -> void:

@@ -3,7 +3,7 @@ extends Resource
 
 const DIR := "res://resources/dice_materials/"
 
-static var _by_id: Dictionary = {}
+static var _path_by_id: Dictionary = {}  # material_id -> resource path (no strong refs)
 
 @export var material_id: StringName = &""
 @export var display_name: String = ""
@@ -15,15 +15,17 @@ static var _by_id: Dictionary = {}
 @export var cost: int = 0
 
 ## The material whose `material_id` is `id` (e.g. &"standard" → bone.tres), or null.
-## Indexes the materials folder once; list_directory also sees exported remaps.
+## Indexes the materials folder once; list_directory also sees exported remaps. Only
+## paths are kept, and lookups go through the resource cache, so this static index
+## never outlives the renderer with textures still referenced.
 static func by_id(id: StringName) -> DiceMaterial:
-	if _by_id.is_empty():
+	if _path_by_id.is_empty():
 		for file in ResourceLoader.list_directory(DIR):
 			if file.ends_with(".tres") or file.ends_with(".res"):
 				var mat := load(DIR + file) as DiceMaterial
 				if mat != null:
-					_by_id[mat.material_id] = mat
-	return _by_id.get(id)
+					_path_by_id[mat.material_id] = DIR + file
+	return load(_path_by_id[id]) as DiceMaterial if _path_by_id.has(id) else null
 
 
 @export_group("Visuals")
