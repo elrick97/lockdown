@@ -15,7 +15,6 @@ signal shake_requested(amplitude_px: float, duration_s: float)
 signal target_hit
 
 const COLOR_FLASH := Color(1.0, 0.82, 0.2)
-const COLOR_MINUS := Color(0.85, 0.35, 0.3)
 
 ## Exposed so the scene can read the final score after the cascade completes.
 var final_score: int = 0
@@ -198,7 +197,7 @@ func _apply(step: Dictionary, tier: int) -> void:
 			_float_delta(step, "")
 		&"heat":
 			_hud.punch(_hud.heat_label, 1.5, 0.3)
-			_hud.float_text("×%.2f" % _heat, _hud.heat_anchor(), ScoreHud.HEAT_COLOR, 56)
+			_hud.float_text("×%.2f" % _heat, _hud.heat_anchor(), ScoreHud.HEAT_COLOR, 56, ScoreHud.PLAQUE_RISE)
 	_chips += int(step.chips)
 	_mult += float(step.mult)
 	_hud.set_chips(_chips)
@@ -213,11 +212,9 @@ func _float_delta(step: Dictionary, suffix: String) -> void:
 	var c := int(step.chips)
 	var m := float(step.mult)
 	if c != 0:
-		var txt := ("+%d" % c if c > 0 else "%d" % c) + (" " + suffix if suffix != "" else "")
-		_hud.float_text(txt, _hud.chips_anchor(), UiStyle.CREAM if c > 0 else COLOR_MINUS)
+		_hud.float_sum(&"chips" if suffix == "" else StringName(suffix), c, _hud.chips_anchor(), false, suffix)
 	if not is_zero_approx(m):
-		var txt := ("+" if m > 0.0 else "") + ScoreHud.fmt_mult(m)
-		_hud.float_text(txt, _hud.mult_anchor(), UiStyle.AMBER if m > 0.0 else COLOR_MINUS)
+		_hud.float_sum(&"mult", m, _hud.mult_anchor(), true)
 
 
 func _land() -> void:

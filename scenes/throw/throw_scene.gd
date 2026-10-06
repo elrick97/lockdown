@@ -24,6 +24,8 @@ var _timer_fill: NinePatchRect
 var _shake_tween: Tween
 var _skip_hint: Label
 var _inspect: InspectCard
+var _urgency_label: Label
+var _tray_tween: Tween
 var _scoring := ScoringEngine.new()
 var _bag: DiceBag
 var _controller: ThrowController
@@ -125,6 +127,15 @@ func _ready() -> void:
 	_skip_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_skip_hint.visible = false
 	add_child(_skip_hint)
+	_urgency_label = Label.new()
+	_urgency_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_urgency_label.add_theme_font_size_override("font_size", 40)
+	_urgency_label.add_theme_color_override("font_color", UiStyle.CREAM)
+	_urgency_label.add_theme_color_override("font_outline_color", UiStyle.OUTLINE)
+	_urgency_label.add_theme_constant_override("outline_size", 8)
+	_urgency_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_urgency_label.visible = false
+	add_child(_urgency_label)
 	_sfx_lock = AudioStreamPlayer.new()
 	add_child(_sfx_lock)
 	_sfx_combo = AudioStreamPlayer.new()
@@ -207,6 +218,8 @@ func _apply_layout() -> void:
 		_set_rect(_trinket_row, 0.0, 0.0, 1.0, 0.0, 40.0, 1800.0, -40.0, 1930.0)
 	if _skip_hint != null:
 		_set_rect(_skip_hint, 0.0, 0.0, 1.0, 0.0, 40.0, 1820.0, -40.0, 1910.0)
+	if _urgency_label != null:
+		_set_rect(_urgency_label, 0.0, 0.0, 1.0, 0.0, 40.0, 548.0, -44.0, 600.0)
 	if _end_panel != null:
 		_end_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		# End-of-run card (run-flow spec): stamped title, the final total counting up,
@@ -278,11 +291,17 @@ func _update_urgency(left: float) -> void:
 	if left >= _fx.urgency_s:
 		_timer_fill.modulate = Color.WHITE
 		_timer_track.modulate = Color.WHITE
+		if _urgency_label != null:
+			_urgency_label.visible = false
 		return
 	var k := 1.0 - left / _fx.urgency_s
-	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.03)
+	# Calm pulse (≤ 2 Hz, flashing guideline) plus the seconds left as a number, so
+	# urgency doesn't rely on colour alone.
+	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * TAU * _fx.urgency_pulse_hz)
 	_timer_fill.modulate = Color.WHITE.lerp(URGENT_TINT, k).lightened(0.3 * pulse)
 	_timer_track.modulate = Color.WHITE.lerp(Color(1.4, 0.7, 0.6), k * pulse)
+	_urgency_label.text = "%.1f" % left
+	_urgency_label.visible = true
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -436,7 +455,7 @@ func _on_die_locked(die_index: int, _window_index: int) -> void:
 		_refresh_lock_preview(true)
 	# Lock feedback (throw-loop spec): the die punches and the table nudges.
 	_tumbler.punch_die(die_index, _fx.lock_punch_scale, _fx.lock_punch_s)
-	_screen_shake(_fx.lock_shake_px, _fx.lock_shake_s)
+	_nudge_tray(_fx.lock_shake_px, _fx.lock_shake_s)
 	Input.vibrate_handheld(30)
 	if _sfx_lock != null and _sfx_lock.stream != null:
 		_sfx_lock.play()
@@ -463,6 +482,20 @@ func _mark_dead_slots() -> void:
 func _on_carve_activated(_die_index: int, carve_type: StringName) -> void:
 	if carve_type == &"spark":
 		_controller.freeze_window(0.5)
+
+
+## Lock feedback moves only the tray, so the HUD text stays still while you read it;
+## full-screen shake is kept for combos and TARGET HIT.
+func _nudge_tray(amplitude: float, duration: float) -> void:
+	if amplitude <= 0.0 or duration <= 0.0:
+		return
+	if _tray_tween != null and _tray_tween.is_valid():
+		_tray_tween.kill()
+		_set_rect(_tray, 0.0, 0.27, 1.0, 0.66, 0.0, 0.0, 0.0, 0.0)
+	var home := _tray.position
+	_tray_tween = create_tween()
+	for dx: float in [amplitude, -amplitude * 0.6, 0.0]:
+		_tray_tween.tween_property(_tray, "position:x", home.x + dx, duration / 3.0)
 
 
 func _screen_shake(amplitude: float, duration: float) -> void:

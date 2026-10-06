@@ -7,6 +7,7 @@ extends Control
 
 const HEAT_COLOR := Color(1.0, 0.56, 0.32)
 const STAMP_ANGLE := -0.07
+const PLAQUE_RISE := 50.0
 ## Target bar: the timer kit drawn at half scale (its 9-patch margins need ≥ 52 px height).
 const BAR_POS := Vector2(64.0, 212.0)
 const BAR_SIZE := Vector2(1904.0, 56.0)
@@ -25,6 +26,14 @@ var _mult_plaque: Panel
 var _heat_plaque: Panel
 var _bar: Control
 var _transients: Array[Node] = []
+## Active floats per spawn cell, so simultaneous floats stack instead of piling up.
+var _float_cells := {}
+## Running plaque floats: key → { label, value, mult }. Deltas landing on the same
+## plaque while its float is alive merge into one number (Hades/VS rule) instead of
+## stacking into a pile.
+var _sum_floats := {}
+## Feedback tunables (stack spacing, stamp hold); the scene may replace it.
+var fx: FeedbackConfig = preload("res://resources/feedback_config.tres")
 
 
 func _init() -> void:
@@ -138,16 +147,22 @@ func set_target_fraction(f: float) -> void:
 
 
 ## Centre of each plaque in global canvas coordinates (float-text origins).
+## Float origins sit just above each plaque, so a "+n" never covers the value.
 func chips_anchor() -> Vector2:
-	return _chips_plaque.get_global_rect().get_center()
+	return _above(_chips_plaque)
 
 
 func mult_anchor() -> Vector2:
-	return _mult_plaque.get_global_rect().get_center()
+	return _above(_mult_plaque)
 
 
 func heat_anchor() -> Vector2:
-	return _heat_plaque.get_global_rect().get_center()
+	return _above(_heat_plaque)
+
+
+func _above(c: Control) -> Vector2:
+	var r := c.get_global_rect()
+	return Vector2(r.get_center().x, r.position.y - 36.0)
 
 
 ## Scale pop on a readout (values landing).
@@ -160,7 +175,9 @@ func punch(c: CanvasItem, amount: float = 1.35, duration: float = 0.22) -> void:
 
 
 ## A "+n" that rises from `at` (global) and fades.
-func float_text(text: String, at: Vector2, color: Color, font_size: int = 64) -> Label:
+## `rise`: how far it drifts up (px). Plaque floats use a short rise so they stay in
+## the status band and never reach the HUD panel; stacked ones never collide.
+func float_text(text: String, at: Vector2, color: Color, font_size: int = 64, rise: float = 130.0) -> Label:
 	var l := Label.new()
 	l.text = text
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -173,15 +190,63 @@ func float_text(text: String, at: Vector2, color: Color, font_size: int = 64) ->
 	l.size = Vector2(320, 100)
 	l.pivot_offset = l.size / 2.0
 	add_child(l)
-	l.global_position = at - l.size / 2.0
+	# Stack: each float already rising from this spot pushes the new one up a row.
+	var cell := Vector2i(roundi(at.x / 80.0), roundi(at.y / 80.0))
+	var stacked: int = _float_cells.get(cell, 0)
+	_float_cells[cell] = stacked + 1
+	l.set_meta(&"cell", cell)
+	l.global_position = at - l.size / 2.0 - Vector2(0.0, fx.float_stack_px * stacked)
 	l.scale = Vector2(0.4, 0.4)
 	_transients.append(l)
+	_float_motion(l, rise)
+	return l
+
+
+func _float_motion(l: Label, rise: float) -> void:
+	if l.has_meta(&"tween"):
+		var old: Tween = l.get_meta(&"tween")
+		if old != null and old.is_valid():
+			old.kill()
+	l.modulate.a = 1.0
 	var t := l.create_tween()
 	t.tween_property(l, "scale", Vector2.ONE * 1.15, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	t.parallel().tween_property(l, "position:y", l.position.y - 130.0, 0.75).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	t.parallel().tween_property(l, "position:y", l.position.y - rise, 0.75).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	t.tween_property(l, "modulate:a", 0.0, 0.25)
 	t.tween_callback(_drop.bind(l))
-	return l
+	l.set_meta(&"tween", t)
+
+
+## A plaque delta ("+30" chips, "+2" mult). While the plaque's float is still alive,
+## new deltas add into it and it re-punches, so a run of charm triggers reads as one
+## climbing number rather than a stack.
+func float_sum(key: StringName, delta: float, at: Vector2, is_mult: bool, suffix: String = "") -> Label:
+	var e: Dictionary = _sum_floats.get(key, {})
+	if not e.is_empty() and is_instance_valid(e.label) and not (e.label as Label).is_queued_for_deletion():
+		e.value = float(e.value) + delta
+		var l: Label = e.label
+		l.text = _sum_text(float(e.value), is_mult, suffix)
+		l.add_theme_color_override("font_color", _sum_color(float(e.value), is_mult))
+		l.scale = Vector2(0.8, 0.8)
+		_float_motion(l, PLAQUE_RISE * 0.4)
+		return l
+	var nl := float_text(_sum_text(delta, is_mult, suffix), at, _sum_color(delta, is_mult), 64, PLAQUE_RISE)
+	_sum_floats[key] = {"label": nl, "value": delta}
+	return nl
+
+
+static func _sum_text(v: float, is_mult: bool, suffix: String) -> String:
+	var core := (("+" if v > 0.0 else "") + fmt_mult(v)) if is_mult else ("%+d" % roundi(v))
+	return core + (" " + suffix if suffix != "" else "")
+
+
+static func _sum_color(v: float, is_mult: bool) -> Color:
+	if v < 0.0:
+		return Color(0.85, 0.35, 0.3)
+	return UiStyle.AMBER if is_mult else UiStyle.CREAM
+
+
+func active_floats_at(at: Vector2) -> int:
+	return _float_cells.get(Vector2i(roundi(at.x / 80.0), roundi(at.y / 80.0)), 0)
 
 
 ## The combo name slams onto the table: oversized, tilted, settling with a bounce.
@@ -193,7 +258,14 @@ func stamp(text: String) -> void:
 	stamp_label.rotation = STAMP_ANGLE
 	stamp_label.modulate = Color(1, 1, 1, 0)
 	stamp_label.visible = true
-	slam(stamp_label)
+	var t := slam(stamp_label)
+	# Then it lifts off the dice so the board can be read: up, smaller, fading.
+	t.tween_interval(fx.stamp_hold_s)
+	t.tween_property(stamp_label, "position:y", stamp_label.position.y - 220.0, 0.3) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.parallel().tween_property(stamp_label, "scale", Vector2.ONE * 0.55, 0.3)
+	t.parallel().tween_property(stamp_label, "modulate:a", 0.0, 0.3)
+	t.tween_callback(stamp_label.hide)
 
 
 func clear_stamp() -> void:
@@ -293,6 +365,8 @@ func clear_transients() -> void:
 		if is_instance_valid(n):
 			n.queue_free()
 	_transients.clear()
+	_float_cells.clear()
+	_sum_floats.clear()
 	stamp_label.visible = false
 
 
@@ -306,5 +380,8 @@ func transient_count() -> int:
 
 func _drop(n: Node) -> void:
 	_transients.erase(n)
+	if is_instance_valid(n) and n.has_meta(&"cell"):
+		var cell: Vector2i = n.get_meta(&"cell")
+		_float_cells[cell] = maxi(0, int(_float_cells.get(cell, 1)) - 1)
 	if is_instance_valid(n):
 		n.queue_free()

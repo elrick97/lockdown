@@ -122,3 +122,63 @@ func test_throw_disabled_until_cascade_finishes() -> void:
 	assert_true(scene._throw_button.disabled, "disabled while the cascade plays")
 	scene._cascade.skip()
 	assert_false(scene._throw_button.disabled, "re-enabled when it finishes")
+
+
+# --- add-feedback-hygiene ---
+
+func test_lock_nudges_the_tray_not_the_screen() -> void:
+	var scene := _scene()
+	_open_window(scene)
+	var tray_home: Vector2 = scene._tray.position
+	scene._controller.lock_die(0)
+	var t: Tween = scene._tray_tween
+	t.pause()  # step by hand: frame-time independent
+	t.custom_step(0.02)
+	assert_ne(scene._tray.position.x, tray_home.x, "the tray nudged")
+	assert_eq(scene.position, Vector2.ZERO, "the HUD never shakes on a lock")
+	t.custom_step(1.0)
+	assert_eq(scene._tray.position, tray_home, "and settled back")
+
+
+func test_urgency_shows_seconds_and_pulses_calmly() -> void:
+	var scene := _scene()
+	_open_window(scene)
+	assert_lte(scene._fx.urgency_pulse_hz, 3.0, "flashing guideline")
+	scene._controller.tick(scene._effective_window_s - 0.5)
+	scene._update_visuals()
+	assert_true(scene._urgency_label.visible)
+	assert_eq(scene._urgency_label.text, "0.5")
+	scene._update_urgency(INF)
+	assert_false(scene._urgency_label.visible, "hidden outside the last stretch")
+
+
+func test_simultaneous_floats_stack_instead_of_overlapping() -> void:
+	var hud := ScoreHud.new()
+	add_child_autofree(hud)
+	var at := hud.chips_anchor()
+	var a := hud.float_text("+10", at, UiStyle.CREAM)
+	var b := hud.float_text("+20", at, UiStyle.CREAM)
+	assert_eq(hud.active_floats_at(at), 2)
+	assert_almost_eq(a.global_position.y - b.global_position.y, hud.fx.float_stack_px, 1.0, "second float sits a row higher")
+	assert_lt(at.y, hud._chips_plaque.get_global_rect().position.y, "floats spawn above the plaque")
+
+
+func test_stamp_lifts_off_the_dice() -> void:
+	var hud := ScoreHud.new()
+	add_child_autofree(hud)
+	hud.stamp("PAIR")
+	assert_true(hud.stamp_label.visible)
+	await wait_seconds(hud.fx.stamp_hold_s + 0.36 + 0.4)
+	assert_false(hud.stamp_label.visible, "gone once it has lifted away")
+
+
+func test_plaque_deltas_merge_into_one_climbing_number() -> void:
+	var hud := ScoreHud.new()
+	add_child_autofree(hud)
+	var a := hud.float_sum(&"chips", 30, hud.chips_anchor(), false)
+	var b := hud.float_sum(&"chips", 6, hud.chips_anchor(), false)
+	assert_same(a, b, "one float, not two")
+	assert_eq(a.text, "+36")
+	var m := hud.float_sum(&"mult", 2.0, hud.mult_anchor(), true)
+	hud.float_sum(&"mult", 1.5, hud.mult_anchor(), true)
+	assert_eq(m.text, "+3.5")

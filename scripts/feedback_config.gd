@@ -29,6 +29,12 @@ extends Resource
 @export var lock_shake_s: float = 0.1
 ## Timer urgency: the last urgency_s of a window pulses toward oxblood.
 @export var urgency_s: float = 0.8
+## Urgency pulse rate (Hz). ≤ 3 per the flashing guideline; kept calm at 2.
+@export var urgency_pulse_hz: float = 2.0
+## Floats spawned at the same spot stack upward by this many px instead of overlapping.
+@export var float_stack_px: float = 72.0
+## The combo stamp holds on the table this long, then lifts off the dice and fades.
+@export var stamp_hold_s: float = 0.55
 ## Tap-to-skip: taps during the cascade jump to its end, except in the first
 ## skip_grace_s (so the tap that locked the last die never skips its own payoff).
 @export var skip_grace_s: float = 0.35
