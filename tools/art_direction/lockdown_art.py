@@ -2302,3 +2302,38 @@ def export_lock_signifiers():
     save_image("crack", np.clip(img, 0, 1), os.path.join(PROD_DIR, "crack.png"))
     written.append("crack.png")
     return written
+
+
+# ========================================================= menu icons (add-pause-settings)
+def export_menu_icons():
+    """Pause and settings buttons as walnut-and-brass chips (128Â², alpha) in assets/ui/."""
+    pal = DIRECTIONS[PROD_DIRECTION]["pal"]
+    written = []
+    for name in ("icon_pause", "icon_settings"):
+        cam = _ui_stage(128, 128)
+        brass = _ui_mat("Brass", pal["brass"], metal=0.95, rough=0.28)
+        walnut = _ui_mat("Walnut", (0.13, 0.065, 0.035), rough=0.4, coat=0.5, grain=(1.0, 8.0, 1.0))
+        ivory = _ui_mat("Ivory", (0.86, 0.76, 0.56), rough=0.35, coat=0.4)
+        ink = _ui_mat("Ink", (0.04, 0.02, 0.015), rough=0.5)
+        # ortho scale is 1.28 units for 128 px: a 0.6-radius chip fills it with a margin.
+        _prism("Chip", _circle(0, 0, 0.6, 64), 0.1, walnut, 0.0, 0.03)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.56, minor_radius=0.025, major_segments=64,
+                                         minor_segments=8, location=(0, 0, 0.0))
+        bpy.context.active_object.data.materials.append(brass)
+        z = 0.045
+        if name == "icon_pause":
+            for sx in (-0.11, 0.11):
+                _prism(f"Bar{sx}", [(x + sx, y) for x, y in rrect_points(0.13, 0.48, 0.04)], 0.04, ivory, z, 0.012)
+        else:
+            teeth, r_out, r_in = 8, 0.36, 0.27
+            pts = []
+            for k in range(teeth * 2):
+                a0 = 2 * math.pi * k / (teeth * 2)
+                r = r_out if k % 2 == 0 else r_in
+                for da in (-0.12, 0.12):
+                    pts.append((r * math.cos(a0 + da), r * math.sin(a0 + da)))
+            _prism("Gear", pts, 0.04, ivory, z, 0.01)
+            _disc("Hub", 0.0, 0.0, 0.11, 0.02, ink, z + 0.012, 0.0)
+        render_to(os.path.join(UI_DIR, name + ".png"), (128, 128), cam, transparent=True)
+        written.append(name + ".png")
+    return written

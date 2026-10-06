@@ -88,6 +88,19 @@ static func charm_row(charms: Array, slots: int, px: float, on_pick := Callable(
 	return row
 
 
+## A round icon button (pause, settings): the Blender chip itself is the button.
+static func icon_button(piece: String, px: float = 130.0) -> TextureButton:
+	var b := TextureButton.new()
+	b.texture_normal = kit(piece)
+	b.ignore_texture_size = true
+	b.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+	b.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	b.custom_minimum_size = Vector2(px, px)
+	b.button_down.connect(func() -> void: b.modulate = Color(0.8, 0.8, 0.8))
+	b.button_up.connect(func() -> void: b.modulate = Color.WHITE)
+	return b
+
+
 ## Make a control call `action` when tapped (on release, so an open inspect card
 ## closes on the press and this tap reopens it for the new item).
 static func pickable(c: Control, action: Callable) -> void:

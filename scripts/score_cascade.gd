@@ -131,6 +131,12 @@ func play(breakdown: ScoreBreakdown, old_total: int, new_total: int, target: int
 	_tween.tween_callback(_finish)
 
 
+## Score speed setting: scales the whole cascade timeline (1×, 2×).
+func set_speed(scale: float) -> void:
+	if _tween != null and _tween.is_valid() and scale > 0.0:
+		_tween.set_speed_scale(scale)
+
+
 ## True while the cascade is animating (between play() and finished).
 func is_playing() -> bool:
 	return _started_ms >= 0 and not _done

@@ -354,6 +354,10 @@ static func style_stamp(l: Label, font_size: int = 120, color: Color = UiStyle.A
 
 ## Slam a label in: oversized and transparent → settles with a small bounce.
 static func slam(l: Control, from_scale: float = 2.6) -> Tween:
+	# Looked up at runtime: tools compile this class before autoloads are registered.
+	var st := (Engine.get_main_loop() as SceneTree).root.get_node_or_null(^"Settings")
+	if st != null and st.reduced_motion:
+		from_scale = 1.0  # reduced motion: fade in place, no slam
 	l.pivot_offset = l.size / 2.0
 	l.scale = Vector2.ONE * from_scale
 	l.modulate.a = 0.0

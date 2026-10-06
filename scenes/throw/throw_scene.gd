@@ -39,6 +39,11 @@ var _cashout_title: Label
 var _cashout_rows: VBoxContainer
 var _cashout_total: Label
 var _cashout_continue: Button
+## Manual pause (add-pause-settings): the chip button and the menu over the cover.
+var _pause_button: TextureButton
+var _pause_menu: PauseMenu
+var _paused_label: Label
+var _menu_open := false
 var _tray_tween: Tween
 var _scoring := ScoringEngine.new()
 var _bag: DiceBag
@@ -157,6 +162,22 @@ func _ready() -> void:
 	add_child(_sfx_combo)
 	_build_end_panel()
 	_build_cashout()
+	_pause_button = UiStyle.icon_button("icon_pause")
+	_pause_button.pressed.connect(open_pause)
+	add_child(_pause_button)
+	_pause_menu = PauseMenu.new()
+	_pause_menu.resume_requested.connect(_on_pause_resume)
+	_pause_menu.abandon_confirmed.connect(_on_abandon)
+	add_child(_pause_menu)
+	_paused_label = Label.new()
+	_paused_label.text = "PAUSED"
+	_paused_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_paused_label.add_theme_font_size_override("font_size", 72)
+	_paused_label.add_theme_color_override("font_color", UiStyle.CREAM)
+	_paused_label.anchor_right = 1.0
+	_paused_label.offset_top = 960.0
+	_paused_label.offset_bottom = 1060.0
+	_cover.add_child(_paused_label)
 	RunCoordinator.cashout_ready.connect(_show_cashout)
 	_inspect = InspectCard.new()
 	add_child(_inspect)
@@ -197,6 +218,7 @@ func _ready() -> void:
 	move_child(_end_panel, -1)
 	move_child(_inspect, -1)  # inspect opens over the end panel too
 	move_child(_cover, -1)
+	move_child(_pause_menu, -1)
 
 	_update_round_labels()
 	_hud.reset(_scoring_config.heat_max)  # idle HEAT: what a fast lock would earn
@@ -257,6 +279,9 @@ func _apply_layout() -> void:
 		_set_rect(_skip_hint, 0.0, 0.0, 1.0, 0.0, 40.0, 1820.0, -40.0, 1910.0)
 	if _urgency_label != null:
 		_set_rect(_urgency_label, 0.0, 0.0, 1.0, 0.0, 40.0, 548.0, -44.0, 600.0)
+	if _pause_button != null:
+		# Bottom-left corner beside THROW: in reach, but far from the dice.
+		_set_rect(_pause_button, 0.0, 1.0, 0.0, 1.0, 40.0, -275.0, 170.0, -145.0)
 	if _end_panel != null:
 		_end_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		# End-of-run card (run-flow spec): stamped title, the final total counting up,
@@ -297,8 +322,8 @@ func _process(delta: float) -> void:
 			get_tree().paused = false
 			_controller.restart_window()
 		return
-	if get_tree().paused:
-		return
+	if get_tree().paused or _end_panel.visible:
+		return  # an abandoned or finished run never ticks on behind the end panel
 	_controller.tick(delta)
 	_update_visuals()
 
@@ -498,7 +523,8 @@ func _on_die_locked(die_index: int, _window_index: int) -> void:
 	# Lock feedback (throw-loop spec): the die punches and the table nudges.
 	_tumbler.punch_die(die_index, _fx.lock_punch_scale, _fx.lock_punch_s)
 	_nudge_tray(_fx.lock_shake_px, _fx.lock_shake_s)
-	Input.vibrate_handheld(30)
+	if Settings.haptics:
+		Input.vibrate_handheld(30)
 	if _sfx_lock != null and _sfx_lock.stream != null:
 		_sfx_lock.play()
 
@@ -529,6 +555,7 @@ func _on_carve_activated(_die_index: int, carve_type: StringName) -> void:
 ## Lock feedback moves only the tray, so the HUD text stays still while you read it;
 ## full-screen shake is kept for combos and TARGET HIT.
 func _nudge_tray(amplitude: float, duration: float) -> void:
+	amplitude *= Settings.shake_scale()
 	if amplitude <= 0.0 or duration <= 0.0:
 		return
 	if _tray_tween != null and _tray_tween.is_valid():
@@ -541,6 +568,7 @@ func _nudge_tray(amplitude: float, duration: float) -> void:
 
 
 func _screen_shake(amplitude: float, duration: float) -> void:
+	amplitude *= Settings.shake_scale()
 	if amplitude <= 0.0 or duration <= 0.0:
 		return
 	if _shake_tween != null and _shake_tween.is_valid():
@@ -574,10 +602,23 @@ func _on_resolved(result: ThrowResult) -> void:
 	_skip_hint.visible = true
 	_cascade.charm_triggered.connect(_pulse_charm)
 	_cascade.play(breakdown, old_total, new_total, _round.target)
+	_apply_score_speed()
+
+
+## Score speed setting: 2× plays the cascade faster; Instant jumps to its end.
+func _apply_score_speed() -> void:
+	if _cascade == null or not _cascade.is_playing():
+		return
+	if Settings.cascade_speed == 0.0:
+		_cascade.skip()
+	else:
+		_cascade.set_speed(Settings.cascade_speed)
 
 
 func _on_cascade_finished() -> void:
 	_skip_hint.visible = false
+	if _end_panel.visible:
+		return
 	RunCoordinator.record_throw(_cascade.final_score)
 	_round.add_score(_cascade.final_score)
 	if _round.is_done:
@@ -921,6 +962,40 @@ func _notification(what: int) -> void:
 			_on_focus_returned()
 
 
+## Manual pause (throw-loop spec): the focus-loss pause plus the pause menu.
+func open_pause() -> void:
+	if _end_panel.visible or _cashout.visible or _menu_open:
+		return
+	_menu_open = true
+	_on_focus_lost()
+	_pause_menu.open_main()
+
+
+func _on_pause_resume() -> void:
+	_menu_open = false
+	_paused_label.visible = true
+	var s := _controller.state
+	if s == ThrowController.State.TUMBLE or s == ThrowController.State.LOCK_WINDOW \
+			or s == ThrowController.State.REROLL:
+		_on_focus_returned()  # 3-2-1 and the window restarts, as after focus loss
+		return
+	_focus_paused = false
+	get_tree().paused = false
+	_cover.visible = false
+
+
+## Abandon run (run-flow spec): ends the run now as a loss, through the end panel.
+func _on_abandon() -> void:
+	_menu_open = false
+	_focus_paused = false
+	get_tree().paused = false
+	_cover.visible = false
+	if _cascade != null and _cascade.is_playing():
+		_cascade.skip()
+	if not _end_panel.visible:
+		_arc.on_round_lost()
+
+
 func _on_focus_lost() -> void:
 	if _focus_paused or not is_inside_tree():
 		return
@@ -928,11 +1003,12 @@ func _on_focus_lost() -> void:
 	_countdown_left = -1.0
 	get_tree().paused = true
 	_cover.visible = true
+	_paused_label.visible = not _menu_open  # the menu carries its own title
 	_countdown_label.text = ""
 
 
 func _on_focus_returned() -> void:
-	if not _focus_paused:
-		return
+	if not _focus_paused or _menu_open:
+		return  # the pause menu stays up until the player resumes
 	_focus_paused = false
 	_countdown_left = _config.resume_countdown_s

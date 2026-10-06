@@ -25,7 +25,8 @@ SHOP = Path(__file__).resolve().parents[2] / "assets" / "shop"  # add-shop-icons
 SHOP_ICONS = ("iron", "glass", "wild_6_bone", "gem_5_bone", "spark_4_bone", "re_tumble", "freeze_timer")
 UI_PX.update({"panel.png": (256, 256), "plaque.png": (256, 96), "socket.png": (160, 160),
               "timer_frame.png": (512, 56), "timer_fill.png": (64, 32),
-              "start_hero.png": (768, 640)})  # add-start-hero-art
+              "start_hero.png": (768, 640),  # add-start-hero-art
+              "icon_pause.png": (128, 128), "icon_settings.png": (128, 128)})  # add-pause-settings
 DIE_TRIS_MAX = 300
 BUDGET_PX = {"die_": (768, 512), "felt": (1024, 1024), "rim": (1024, 1024), "charm": (512, 512),
              "table": (1024, 2048)}

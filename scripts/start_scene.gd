@@ -19,6 +19,8 @@ var _mark: TextureRect
 var _how_to: Label
 var _play_button: Button
 var _how_to_card: Panel
+var _settings_button: TextureButton
+var _settings_menu: PauseMenu
 
 
 func _ready() -> void:
@@ -51,9 +53,15 @@ func _ready() -> void:
 	_play_button.pressed.connect(_on_play_pressed)
 	add_child(_play_button)
 
+	_settings_button = UiStyle.icon_button("icon_settings")
+	_settings_button.pressed.connect(func() -> void: _settings_menu.open_settings_only())
+	add_child(_settings_button)
+	_settings_menu = PauseMenu.new()
+	add_child(_settings_menu)
 	_apply_layout()
 	get_viewport().size_changed.connect(_apply_layout)
-	_start_idle()
+	if not Settings.reduced_motion:
+		_start_idle()
 
 
 func _apply_layout() -> void:
@@ -62,6 +70,8 @@ func _apply_layout() -> void:
 	_place(_how_to_card, 0.0, 0.0, 1.0, 0.0, 50.0, 920.0, -50.0, 1420.0)
 	_place(_how_to, 0.0, 0.0, 1.0, 0.0, 100.0, 950.0, -100.0, 1390.0)
 	_place(_play_button, 0.5, 1.0, 0.5, 1.0, -280.0, -420.0, 280.0, -200.0)
+	if _settings_button != null:
+		_place(_settings_button, 0.0, 1.0, 0.0, 1.0, 40.0, -375.0, 170.0, -245.0)
 
 
 func _place(c: Control, al: float, at: float, ar: float, ab: float,
