@@ -33,6 +33,12 @@ var _intro_reward: Label
 var _intro_rule: Label
 var _intro_play: Button
 var _brief: AnteBrief
+## Round-cleared panel (add-round-cashout).
+var _cashout: ColorRect
+var _cashout_title: Label
+var _cashout_rows: VBoxContainer
+var _cashout_total: Label
+var _cashout_continue: Button
 var _tray_tween: Tween
 var _scoring := ScoringEngine.new()
 var _bag: DiceBag
@@ -150,6 +156,8 @@ func _ready() -> void:
 	_sfx_combo = AudioStreamPlayer.new()
 	add_child(_sfx_combo)
 	_build_end_panel()
+	_build_cashout()
+	RunCoordinator.cashout_ready.connect(_show_cashout)
 	_inspect = InspectCard.new()
 	add_child(_inspect)
 	# Score readout above the table, below the end panel and focus cover (score-cascade spec).
@@ -185,6 +193,7 @@ func _ready() -> void:
 	# Draw order: the end panel dims everything built above, and the focus cover
 	# stays on top of all of it.
 	move_child(_intro, -1)
+	move_child(_cashout, -1)
 	move_child(_end_panel, -1)
 	move_child(_inspect, -1)  # inspect opens over the end panel too
 	move_child(_cover, -1)
@@ -226,6 +235,14 @@ func _apply_layout() -> void:
 	# never show together, so they share the row above THROW.
 	if _skip_button != null:
 		_set_rect(_skip_button, 0.5, 0.0, 0.5, 0.0, -260.0, 1800.0, 260.0, 1930.0)
+	if _cashout != null:
+		_cashout.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_set_rect(_cashout.get_node("CashoutCard"), 0.0, 0.0, 1.0, 0.0, 60.0, 560.0, -60.0, 1460.0)
+		_set_rect(_cashout_title, 0.0, 0.0, 1.0, 0.0, 40.0, 420.0, -40.0, 640.0)
+		_set_rect(_cashout_rows, 0.0, 0.0, 1.0, 0.0, 130.0, 700.0, -130.0, 1060.0)
+		_set_rect(_cashout.get_node("GoldCaption"), 0.0, 0.0, 1.0, 0.0, 130.0, 1120.0, -130.0, 1170.0)
+		_set_rect(_cashout_total, 0.0, 0.0, 1.0, 0.0, 130.0, 1170.0, -130.0, 1380.0)
+		_set_rect(_cashout_continue, 0.5, 1.0, 0.5, 1.0, -280.0, -300.0, 280.0, -120.0)
 	if _intro != null:
 		_intro.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		_set_rect(_intro.get_node("IntroCard"), 0.0, 0.0, 1.0, 0.0, 60.0, 640.0, -60.0, 1360.0)
@@ -597,6 +614,89 @@ func _on_run_lost() -> void:
 	_status.text = "GAME OVER."
 	_throw_button.disabled = true
 	_show_end_panel(false)
+
+
+## Round-cleared panel (run-flow spec): the gold earned, line by line, then the new
+## total stamps in; CONTINUE goes to the shop. Same card language as the end panel.
+func _build_cashout() -> void:
+	_cashout = ColorRect.new()
+	_cashout.color = Color(0.02, 0.01, 0.01, 0.82)
+	_cashout.visible = false
+	add_child(_cashout)
+	var card := Panel.new()
+	card.name = "CashoutCard"
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_cashout.add_child(card)
+	_cashout_title = Label.new()
+	ScoreHud.style_stamp(_cashout_title, 104)
+	_cashout.add_child(_cashout_title)
+	_cashout_rows = VBoxContainer.new()
+	_cashout_rows.add_theme_constant_override("separation", 18)
+	_cashout_rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_cashout.add_child(_cashout_rows)
+	var caption := Label.new()
+	caption.name = "GoldCaption"
+	caption.text = "GOLD"
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	caption.add_theme_font_size_override("font_size", 30)
+	caption.add_theme_color_override("font_color", UiStyle.MUTED)
+	_cashout.add_child(caption)
+	_cashout_total = Label.new()
+	_cashout_total.theme_type_variation = &"HudValue"
+	_cashout_total.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_cashout_total.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_cashout_total.add_theme_font_size_override("font_size", 120)
+	_cashout_total.add_theme_color_override("font_outline_color", UiStyle.OUTLINE)
+	_cashout_total.add_theme_constant_override("outline_size", 14)
+	_cashout.add_child(_cashout_total)
+	_cashout_continue = Button.new()
+	_cashout_continue.text = "CONTINUE"
+	_cashout_continue.theme_type_variation = &"ThrowButton"
+	_cashout_continue.pressed.connect(RunCoordinator.go_to_shop)
+	_cashout.add_child(_cashout_continue)
+
+
+func _show_cashout(data: Dictionary) -> void:
+	if not is_inside_tree():
+		return
+	_intro.visible = false
+	_throw_button.visible = false
+	_cashout_title.text = data.title
+	_cashout_title.rotation = ScoreHud.STAMP_ANGLE
+	for c in _cashout_rows.get_children():
+		c.queue_free()
+	var rows: Array[Control] = []
+	for line in data.lines:
+		var row := HBoxContainer.new()
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var text := Label.new()
+		text.text = line.text
+		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		text.add_theme_font_size_override("font_size", 40)
+		row.add_child(text)
+		var value := Label.new()
+		value.text = "%+dg" % int(line.gold)
+		value.theme_type_variation = &"HudValue"
+		value.add_theme_font_size_override("font_size", 44)
+		row.add_child(value)
+		row.modulate.a = 0.0
+		_cashout_rows.add_child(row)
+		rows.append(row)
+	_cashout_total.text = str(int(data.before))
+	_cashout.visible = true
+	await get_tree().process_frame
+	if not is_inside_tree() or not _cashout.visible:
+		return
+	ScoreHud.slam(_cashout_title, 2.2)
+	var t := create_tween()
+	t.tween_interval(0.35)
+	for row in rows:
+		t.tween_property(row, "modulate:a", 1.0, 0.12)
+		t.parallel().tween_callback(_hud.punch.bind(row, 1.08, 0.2))
+		t.tween_interval(0.28)
+	t.tween_method(func(v: float) -> void: _cashout_total.text = str(roundi(v)),
+		float(data.before), float(data.after), 0.5)
+	t.tween_callback(func() -> void: _hud.punch(_cashout_total, 1.35, 0.3))
 
 
 ## Ante intro card (ante-arc / throw-loop spec): the ante's target, reward and rule in

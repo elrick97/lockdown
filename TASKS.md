@@ -75,6 +75,7 @@
 - [x] Shared inspect card for charms, dice and trinkets (throw, shop, end panel) `add-inspect-card` *(audit E1/F6)*
 - [x] Feedback hygiene: tray-only lock nudge, 2 Hz urgency + seconds, merged floats, stamp lifts off `add-feedback-hygiene` *(audit C5/C6/D1/D2)*
 - [x] Ante intro card (target, reward, boss/risk rule), boss chip, clearer HUD copy, shop NEXT strip `add-ante-intro-card` *(audit B1/B2/C4/F3)*
+- [x] Round-cleared cash-out panel itemising gold (risk skip now applies interest per spec) `add-round-cashout` *(audit D3)*
 - [x] Art direction exploration: 3 style frames, pick one `add-art-direction` *(picked B "Smoke Room", logged in PRD §5)*
 - [x] UI layout pass: thumb-zone audit `add-smoke-room-ui` *(audited locally per owner rule: every control ≥ 48 dp in the thumb zone, tested)*
 - [x] Placeholder → first-pass dice/charm art for slice content `add-smoke-room-dice` `add-smoke-room-table` `add-smoke-room-ui-art` `add-charm-icons`

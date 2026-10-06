@@ -244,6 +244,12 @@ func _scenario_risk_skip() -> void:
 	await _screenshot("risk_skip_button")
 	var gold_before: int = _rc.ledger.gold
 	_press(scene._skip_button)
+	await _wait(func() -> bool: return scene._cashout.visible)
+	_check(scene._cashout_title.text == "ROUND SKIPPED", "SKIP shows the cash-out first")
+	var t_cash := Time.get_ticks_msec()
+	await _wait(func() -> bool: return Time.get_ticks_msec() - t_cash >= 1600)
+	await _screenshot("risk_skip_cashout")
+	_press(scene._cashout_continue)
 	await _wait(func() -> bool: return current_scene != null and current_scene.scene_file_path == SHOP_SCENE)
 	await process_frame
 	_check(current_scene.scene_file_path == SHOP_SCENE, "SKIP goes to the Shop")

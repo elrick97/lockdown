@@ -60,11 +60,16 @@ The ante target scores SHALL live in an `AnteConfig` Resource (`resources/ante_a
 - **THEN** `AnteArc.current_ante` is 2 when `ThrowScene` re-enters, and the arc's `run_won`/`run_lost` signals are still connected
 
 ### Requirement: ThrowScene signals ante cleared to RunCoordinator
-When `AnteArc` emits `ante_advanced`, `ThrowScene` SHALL emit `ante_cleared(throws_left: int)` and disable the THROW button. `RunCoordinator` SHALL handle `ante_cleared` by crediting gold and transitioning to `ShopScene`.
+When `AnteArc` emits `ante_advanced`, `ThrowScene` SHALL emit `ante_cleared(throws_left: int)` and disable the THROW button. `RunCoordinator` SHALL handle `ante_cleared` as follows:
+1. Credit the round's gold.
+2. Apply interest once for the coming shop visit.
+3. Emit `cashout_ready` with the itemised breakdown.
 
-#### Scenario: ante_cleared triggers shop transition
+The throw screen shows the round-cleared panel, and its CONTINUE calls `RunCoordinator.go_to_shop()`, which transitions to `ShopScene`.
+
+#### Scenario: ante_cleared leads to the shop through the cash-out
 - **WHEN** `ThrowScene` emits `ante_cleared` with `throws_left = 1`
-- **THEN** `RunCoordinator` credits `base_gold + 1 * gold_per_leftover` to `GoldLedger` and calls `get_tree().change_scene_to_file` for `ShopScene`
+- **THEN** `RunCoordinator` credits `base_gold + 1 * gold_per_leftover`, applies interest and emits `cashout_ready`; the shop loads when the player presses CONTINUE
 
 ### Requirement: Run end is terminal
 Once `run_won` or `run_lost` has fired, `AnteArc` SHALL ignore further `on_round_won` or `on_round_lost` calls without emitting additional signals.
@@ -97,11 +102,14 @@ Once `run_won` or `run_lost` has fired, `AnteArc` SHALL ignore further `on_round
 - **THEN** `skip_reward_gold` is 3 and `risk_antes` is `[2]`
 
 ### Requirement: Risk round can be skipped for reduced gold
-`AnteArc.skip_round()` SHALL behave identically to `on_round_won()`: advance the ante or emit `run_won`. `RunCoordinator.on_risk_skipped()` SHALL earn `skip_reward_gold` before calling `skip_round()`.
+`AnteArc.skip_round()` SHALL behave identically to `on_round_won()`: advance the ante or emit `run_won`. `RunCoordinator.on_risk_skipped()` SHALL do the following:
+1. Earn `skip_reward_gold` before calling `skip_round()`.
+2. If the run continues, apply interest for the coming shop visit, like any other shop visit (gold-economy spec).
+3. Emit `cashout_ready` titled "ROUND SKIPPED".
 
 #### Scenario: Skip earns gold and advances
-- **WHEN** the player presses SKIP on ante 2
-- **THEN** `GoldLedger.gold` increases by `skip_reward_gold` and `current_ante` becomes 3
+- **WHEN** the player presses SKIP on ante 2 holding 6 gold
+- **THEN** gold becomes 6 + 3 = 9 plus interest (11), `current_ante` becomes 3, and the round-skipped cash-out shows before the shop
 
 ### Requirement: Round rules are presented before play
 Each ante's special rule SHALL be stated in plain words before its first throw, through the throw screen's ante intro card:

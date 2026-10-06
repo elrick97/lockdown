@@ -4,9 +4,7 @@
 The gold economy between antes: income, interest, purchases and re-roll costs.
 
 Named tunables on `ShopConfig` Resource (current values): `base_gold_per_ante` = **4**, `gold_per_leftover_throw` = **1**, `interest_rate` = **0.25**, `max_gold` = **40**, `reroll_cost` = **1**, `offer_slots` = **3**.
-
 ## Requirements
-
 ### Requirement: Gold earned after each ante
 After an ante is cleared, the system SHALL award gold equal to `base_gold_per_ante + (throws_left * gold_per_leftover_throw)`, where `throws_left` is the number of unused throws in the final round. Both tunables are exposed in `ShopConfig`.
 
@@ -57,3 +55,11 @@ Pressing RE-ROLL SHALL deduct `ShopConfig.reroll_cost` (default 1) from gold and
 #### Scenario: Gold carries over
 - **WHEN** the player enters the shop with 4 gold, buys nothing, and presses CONTINUE
 - **THEN** gold is still 4 when the next ante's shop opens (after interest)
+
+### Requirement: Income is itemised before the shop
+Every shop visit's income (round reward, spare throws or skip reward, interest) SHALL be reported as line items in `RunCoordinator.last_cashout` / `cashout_ready`, computed from the same ledger operations that change the gold. Interest applies once per shop visit for both cleared and skipped rounds. The formulas are unchanged.
+
+#### Scenario: Lines add up
+- **WHEN** any round is cleared or skipped
+- **THEN** `before + Σ lines == after == GoldLedger.gold`
+
