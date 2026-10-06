@@ -47,6 +47,10 @@ var _owned_icons: HBoxContainer
 var _build_caption: Label
 var _dice_caption: Label
 var _dice_label: Label
+var _inspect: InspectCard
+## Inspect card bottom edges (canvas units): in the gap under your build / above the offers.
+const INSPECT_BUILD_Y := 990.0
+const INSPECT_OFFER_Y := 1090.0
 var _gold_panel: Panel
 
 @onready var _gold_label: Label = $GoldLabel
@@ -85,6 +89,8 @@ func _ready() -> void:
 	SmokeOverlay.add_to(self)
 	_ledger = RunCoordinator.ledger
 	_shop_config = RunCoordinator.shop_config
+	_inspect = InspectCard.new()
+	add_child(_inspect)
 	_apply_layout()
 	_reroll_button.pressed.connect(_on_reroll_pressed)
 	_continue_button.pressed.connect(_on_continue_pressed)
@@ -189,12 +195,12 @@ func _refresh_offers() -> void:
 			_offer_materials.append(null)
 			_offer_trinkets.append(null)
 			_offer_carved.append(item.res as CarvedDieOffer)
-		_offer_container.add_child(_build_offer_card(i, offer, item.res.description, item.res.get("icon")))
+		_offer_container.add_child(_build_offer_card(i, offer, item.res.description, item.res.get("icon"), item.res))
 
 
 ## Offer card (ui-theme spec): name · cost, the full effect description, and BUY.
 func _build_offer_card(index: int, offer: ShopOffer, description: String,
-		icon: Texture2D = null) -> PanelContainer:
+		icon: Texture2D = null, res: Resource = null) -> PanelContainer:
 	var card := PanelContainer.new()
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 24)
@@ -202,6 +208,8 @@ func _build_offer_card(index: int, offer: ShopOffer, description: String,
 	if icon != null:  # charms carry a medallion (add-charm-icons)
 		var badge := UiStyle.charm_badge(icon, 132.0)
 		badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		if res != null:
+			UiStyle.pickable(badge, func() -> void: _inspect.show_item(res, INSPECT_OFFER_Y, true))
 		row.add_child(badge)
 	var text := VBoxContainer.new()
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -293,7 +301,8 @@ func _update_owned_label() -> void:
 	# The build as medallions under the line (add-charm-icons).
 	if _owned_icons != null:
 		_owned_icons.queue_free()
-	_owned_icons = UiStyle.charm_row(RunCoordinator.inventory.iter_charms(), CharmInventory.MAX_SLOTS, 150.0)
+	_owned_icons = UiStyle.charm_row(RunCoordinator.inventory.iter_charms(), CharmInventory.MAX_SLOTS, 150.0,
+		func(c: CharmEffect) -> void: _inspect.show_item(c, INSPECT_BUILD_Y))
 	add_child(_owned_icons)
 	_set_rect(_owned_icons, 0.0, 0.0, 1.0, 0.0, 40.0, 282.0, -40.0, 442.0)
 	_dice_label.text = RunCoordinator.bag.summary()

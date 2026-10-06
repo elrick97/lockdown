@@ -60,7 +60,8 @@ func test_charm_row_shows_owned_build_and_effects() -> void:
 	assert_eq(scene._charm_slots[1].tooltip_text, "Loaded")
 	assert_true(scene._charm_slots[2].disabled, "empty slot is disabled")
 	scene._charm_slots[1].pressed.emit()
-	assert_true(scene._status.text.begins_with("Loaded: "), "tapping shows the effect")
+	assert_true(scene._inspect.visible, "tapping opens the inspect card")
+	assert_eq(scene._inspect.title_label.text, "Loaded")
 
 
 func test_shop_cards_show_descriptions_and_owned_line() -> void:

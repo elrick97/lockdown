@@ -72,6 +72,7 @@
 - [x] Tap on a locked die never locks its neighbour; denied wiggle `fix-tap-lock-resolution` *(UI/UX audit C3)*
 - [x] Live locked-set preview (combo base in status + plaques, Balatro order cascade) `add-live-lock-preview` *(audit C2)*
 - [x] Lock signifiers: socket + padlock + lift, unlocked dim, cracked shattered dice `add-lock-signifiers` *(audit C1)*
+- [x] Shared inspect card for charms, dice and trinkets (throw, shop, end panel) `add-inspect-card` *(audit E1/F6)*
 - [x] Art direction exploration: 3 style frames, pick one `add-art-direction` *(picked B "Smoke Room", logged in PRD §5)*
 - [x] UI layout pass: thumb-zone audit `add-smoke-room-ui` *(audited locally per owner rule: every control ≥ 48 dp in the thumb zone, tested)*
 - [x] Placeholder → first-pass dice/charm art for slice content `add-smoke-room-dice` `add-smoke-room-table` `add-smoke-room-ui-art` `add-charm-icons`

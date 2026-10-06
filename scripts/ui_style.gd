@@ -69,19 +69,33 @@ static func charm_badge(icon: Texture2D, px: float) -> TextureRect:
 
 
 ## A row of charm medallions (the run's build); empty slots show a dim socket.
-static func charm_row(charms: Array, slots: int, px: float) -> HBoxContainer:
+## With `on_pick`, tapping a medallion calls it with that charm (inspect card).
+static func charm_row(charms: Array, slots: int, px: float, on_pick := Callable()) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 16)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for i in slots:
 		if i < charms.size() and (charms[i] as CharmEffect).icon != null:
-			row.add_child(charm_badge((charms[i] as CharmEffect).icon, px))
+			var badge := charm_badge((charms[i] as CharmEffect).icon, px)
+			if on_pick.is_valid():
+				pickable(badge, on_pick.bind(charms[i]))
+			row.add_child(badge)
 		else:
 			var empty := charm_badge(kit("socket"), px)
 			empty.modulate = Color(0.55, 0.55, 0.55)
 			row.add_child(empty)
 	return row
+
+
+## Make a control call `action` when tapped (on release, so an open inspect card
+## closes on the press and this tap reopens it for the new item).
+static func pickable(c: Control, action: Callable) -> void:
+	c.mouse_filter = Control.MOUSE_FILTER_STOP
+	c.gui_input.connect(func(e: InputEvent) -> void:
+		var mb := e as InputEventMouseButton
+		if mb != null and not mb.pressed and mb.button_index == MOUSE_BUTTON_LEFT:
+			action.call())
 
 
 static func _button_styles(t: Theme, type: StringName, kind: String) -> void:

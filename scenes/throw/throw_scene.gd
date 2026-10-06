@@ -11,6 +11,9 @@ const START_SCENE := "res://scenes/start/start_scene.tscn"
 const CHARM_SLOTS := 5
 const FELT := preload("res://assets/table/felt.png")
 const URGENT_TINT := Color(1.0, 0.22, 0.18)
+## Inspect card bottom edges (canvas units): above the charm row / the end-panel build.
+const INSPECT_ABOVE_SLOTS_Y := 1590.0
+const INSPECT_ABOVE_BUILD_Y := 1150.0
 
 var _config: ThrowConfig = preload("res://resources/throw_config.tres")
 var _scoring_config: ScoringConfig = preload("res://resources/scoring_config.tres")
@@ -20,6 +23,7 @@ var _hud: ScoreHud
 var _timer_fill: NinePatchRect
 var _shake_tween: Tween
 var _skip_hint: Label
+var _inspect: InspectCard
 var _scoring := ScoringEngine.new()
 var _bag: DiceBag
 var _controller: ThrowController
@@ -126,6 +130,8 @@ func _ready() -> void:
 	_sfx_combo = AudioStreamPlayer.new()
 	add_child(_sfx_combo)
 	_build_end_panel()
+	_inspect = InspectCard.new()
+	add_child(_inspect)
 	# Score readout above the table, below the end panel and focus cover (score-cascade spec).
 	_hud = ScoreHud.new()
 	add_child(_hud)
@@ -159,6 +165,7 @@ func _ready() -> void:
 	# Draw order: the end panel dims everything built above, and the focus cover
 	# stays on top of all of it.
 	move_child(_end_panel, -1)
+	move_child(_inspect, -1)  # inspect opens over the end panel too
 	move_child(_cover, -1)
 
 	_update_round_labels()
@@ -603,8 +610,7 @@ func _build_charm_row() -> void:
 			slot.icon = charm.icon
 			slot.text = "" if charm.icon != null else charm.display_name
 			slot.tooltip_text = charm.display_name
-			slot.pressed.connect(func() -> void:
-				_status.text = "%s: %s" % [charm.display_name, charm.description])
+			slot.pressed.connect(func() -> void: _inspect.show_item(charm, INSPECT_ABOVE_SLOTS_Y))
 		else:
 			slot.text = ""  # an empty, dimmed socket says "free slot" on its own
 			slot.disabled = true
@@ -631,7 +637,8 @@ func _show_end_panel(won: bool) -> void:
 	# The run's build as medallions under the summary.
 	if _end_build != null:
 		_end_build.queue_free()
-	_end_build = UiStyle.charm_row(RunCoordinator.inventory.iter_charms(), CHARM_SLOTS, 132.0)
+	_end_build = UiStyle.charm_row(RunCoordinator.inventory.iter_charms(), CHARM_SLOTS, 132.0,
+		func(c: CharmEffect) -> void: _inspect.show_item(c, INSPECT_ABOVE_BUILD_Y))
 	_end_panel.add_child(_end_build)
 	_set_rect(_end_build, 0.0, 0.0, 1.0, 0.0, 100.0, 1170.0, -100.0, 1320.0)
 	_end_title.text = "RUN WON" if won else "GAME OVER"
