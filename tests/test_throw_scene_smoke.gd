@@ -156,3 +156,30 @@ func test_tap_uses_event_position_not_cursor() -> void:
 	scene._gui_input(ev)
 	assert_true(scene._controller.locked[2], "the die under the event position locks")
 	assert_eq(scene._controller.locked.count(true), 1, "and only that die")
+
+
+## Focus-loss protection (throw-loop spec) must also fire for a window/tab blur: on
+## the web that is the only focus signal (no application focus notification).
+func test_window_focus_loss_pauses_and_covers() -> void:
+	for pair in [[NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_APPLICATION_FOCUS_IN],
+			[NOTIFICATION_WM_WINDOW_FOCUS_OUT, NOTIFICATION_WM_WINDOW_FOCUS_IN]]:
+		var scene: Control = SCENE.instantiate()
+		add_child_autofree(scene)
+		scene._notification(pair[0])
+		assert_true(get_tree().paused, "focus out (%d) pauses the game" % pair[0])
+		assert_true(scene._cover.visible, "and covers the tray")
+		scene._notification(pair[1])
+		assert_gt(scene._countdown_left, 0.0, "focus in (%d) starts the resume countdown" % pair[1])
+		get_tree().paused = false
+		scene._cover.visible = false
+
+
+func test_resume_countdown_survives_a_long_first_frame() -> void:
+	var scene: Control = SCENE.instantiate()
+	add_child_autofree(scene)
+	scene._notification(NOTIFICATION_WM_WINDOW_FOCUS_OUT)
+	scene._notification(NOTIFICATION_WM_WINDOW_FOCUS_IN)
+	scene._process(30.0)  # a hidden tab's first frame back
+	assert_gt(scene._countdown_left, 0.0, "the 3-2-1 countdown is not skipped")
+	assert_true(scene._cover.visible, "still covered during the countdown")
+	get_tree().paused = false

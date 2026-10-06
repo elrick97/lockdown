@@ -6,6 +6,7 @@ extends Control
 signal ante_cleared(throws_left: int)
 
 const TIMER_BAR_FULL_WIDTH := 1000.0
+const MAX_COUNTDOWN_STEP_S := 0.1
 
 var _config: ThrowConfig = preload("res://resources/throw_config.tres")
 var _scoring_config: ScoringConfig = preload("res://resources/scoring_config.tres")
@@ -116,7 +117,9 @@ func _set_rect(c: Control, al: float, at: float, ar: float, ab: float,
 
 func _process(delta: float) -> void:
 	if _countdown_left >= 0.0:
-		_countdown_left -= delta
+		# Capped step: the first frame after a hidden browser tab can carry seconds of
+		# delta, which would skip the 3-2-1 countdown entirely.
+		_countdown_left -= minf(delta, MAX_COUNTDOWN_STEP_S)
 		_countdown_label.text = str(ceili(maxf(_countdown_left, 0.001)))
 		if _countdown_left <= 0.0:
 			_countdown_left = -1.0
@@ -339,9 +342,11 @@ func _on_run_lost() -> void:
 
 func _notification(what: int) -> void:
 	match what:
-		NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED:
+		# Window focus covers the web (a tab blur sends no application notification);
+		# duplicates on other platforms are absorbed by the _focus_paused guard.
+		NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_WINDOW_FOCUS_OUT:
 			_on_focus_lost()
-		NOTIFICATION_APPLICATION_FOCUS_IN, NOTIFICATION_APPLICATION_RESUMED:
+		NOTIFICATION_APPLICATION_FOCUS_IN, NOTIFICATION_APPLICATION_RESUMED, NOTIFICATION_WM_WINDOW_FOCUS_IN:
 			_on_focus_returned()
 
 

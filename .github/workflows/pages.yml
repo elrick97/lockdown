@@ -1,0 +1,85 @@
+# Builds the single-threaded web export and deploys it to GitHub Pages
+# (OpenSpec change add-web-export). Official Godot release downloads and
+# GitHub-owned actions only; no third-party actions.
+name: Deploy web build to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  GODOT_VERSION: "4.6.3"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+
+      # Only the game's own LFS assets: the style-frame archive is excluded from the
+      # build and would burn the LFS bandwidth quota on every deploy.
+      - name: Pull game LFS assets
+        run: git lfs pull --include="assets/dice/*"
+
+      - name: Keep the style-frame archive out of the import
+        run: touch assets/art_direction/.gdignore
+
+      - name: Cache Godot and export templates
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_VERSION }}-stable
+
+      - name: Install Godot ${{ env.GODOT_VERSION }} and export templates
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          mkdir -p ~/godot
+          curl -fsSL -o /tmp/godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d /tmp/godot
+          mv "/tmp/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64" ~/godot/godot
+          curl -fsSL -o /tmp/templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          unzip -q /tmp/templates.tpz -d /tmp/tpl
+          tdir="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "$tdir"
+          mv /tmp/tpl/templates/web_nothreads_release.zip /tmp/tpl/templates/version.txt "$tdir/"
+
+      - name: Import and export
+        run: |
+          mkdir -p build/web
+          ~/godot/godot --headless --path . --import
+          ~/godot/godot --headless --path . --export-release "Web" build/web/index.html
+          test -f build/web/index.html
+          test -f build/web/index.pck
+          ls -la build/web
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
