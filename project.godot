@@ -19,6 +19,7 @@ config/features=PackedStringArray("4.6", "GL Compatibility")
 RngService="*res://scripts/rng_service.gd"
 RunCoordinator="*res://scripts/run_coordinator.gd"
 Settings="*res://scripts/settings.gd"
+SceneFader="*res://scripts/scene_fader.gd"
 
 [display]
 

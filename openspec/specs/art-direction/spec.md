@@ -173,3 +173,10 @@ Icons import lossless with mipmaps. Temporary atlases go to the temp dir, never 
 - **WHEN** `check_assets.py` runs
 - **THEN** `shop/bone.png` is 256×256
 
+### Requirement: Transition wipe uses the Smoke Room fog
+The screen-transition wipe SHALL be dark warm smoke (`smoke_color` #120B08) dissolving along the same seamless fog noise texture as the overlay. It is drawn above the overlay and every screen (canvas layer 100), as one canvas pass with two noise samples.
+
+#### Scenario: Shared noise
+- **WHEN** a transition plays
+- **THEN** its material samples `SmokeOverlay.noise_texture()`
+

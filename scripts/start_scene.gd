@@ -100,4 +100,4 @@ func _start_idle() -> void:
 
 func _on_play_pressed() -> void:
 	RunCoordinator.new_run()
-	get_tree().change_scene_to_file(THROW_SCENE)
+	SceneFader.change_to(THROW_SCENE)

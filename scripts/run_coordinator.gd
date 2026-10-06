@@ -104,12 +104,12 @@ func _finish_cashout(title: String, before: int, lines: Array) -> void:
 ## The round-cleared panel's CONTINUE: on to the shop.
 func go_to_shop() -> void:
 	last_cashout = {}
-	get_tree().change_scene_to_file("res://scenes/shop/shop_scene.tscn")
+	SceneFader.change_to("res://scenes/shop/shop_scene.tscn")
 
 
 ## Called by ShopScene CONTINUE button. Transitions back to the throw loop.
 func on_shop_continued() -> void:
-	get_tree().change_scene_to_file("res://scenes/throw/throw_scene.tscn")
+	SceneFader.change_to("res://scenes/throw/throw_scene.tscn")
 
 
 ## Called by ThrowScene SKIP button on Risk antes. Earns reduced gold and

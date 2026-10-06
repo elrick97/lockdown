@@ -984,12 +984,12 @@ func _play_end_reveal(won: bool) -> void:
 
 func _on_new_run_pressed() -> void:
 	RunCoordinator.new_run()
-	get_tree().change_scene_to_file("res://scenes/throw/throw_scene.tscn")
+	SceneFader.change_to("res://scenes/throw/throw_scene.tscn")
 
 
 func _on_menu_pressed() -> void:
 	RunCoordinator.end_run()
-	get_tree().change_scene_to_file(START_SCENE)
+	SceneFader.change_to(START_SCENE)
 
 
 func _notification(what: int) -> void:

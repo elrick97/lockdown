@@ -27,6 +27,9 @@ func _initialize() -> void:
 func _run() -> void:
 	_rc = root.get_node("RunCoordinator")
 	_rng = root.get_node("RngService")
+	# Scene swaps are instant in the harness (it drives scenes itself); the wipe gets
+	# its own scenario below.
+	root.get_node("SceneFader").instant = true
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
 	# build/ holds local output only; keep Godot from importing its screenshots.
 	FileAccess.open("res://build/.gdignore", FileAccess.WRITE).close()
@@ -38,6 +41,7 @@ func _run() -> void:
 	await _scenario_juice()
 	await _scenario_charm_icons()
 	await _scenario_fog()
+	await _scenario_transition()
 	await _scenario_run_flow()
 	_report.append("\n%d check(s) failed" % _failures)
 	var f := FileAccess.open(OUT_DIR + "report.md", FileAccess.WRITE)
@@ -404,6 +408,24 @@ func _scenario_fog() -> void:
 	var mean := diff / maxf(n, 1)
 	_check(mean < 0.004, "Edge fog does not flicker (mean change %.4f per channel in ~1/24 s)" % mean)
 	await _screenshot("fog_start")
+
+
+func _scenario_transition() -> void:
+	_section("add-scene-transitions")
+	var fader := root.get_node("SceneFader")
+	fader.instant = false
+	change_scene_to_file(START_SCENE)
+	await process_frame
+	await process_frame
+	_press(current_scene._play_button)
+	await _wait(func() -> bool: return fader.progress() > 0.6)
+	_check(fader.rect.visible and fader.rect.mouse_filter == Control.MOUSE_FILTER_STOP,
+		"PLAY covers the screen with the smoke wipe and blocks taps")
+	await _screenshot("transition_wipe")
+	await _wait(func() -> bool: return not fader.busy)
+	_check(current_scene.scene_file_path == THROW_SCENE and not fader.rect.visible,
+		"the throw screen is revealed and taps work again")
+	fader.instant = true
 
 
 # ----------------------------------------------------------------- helpers
