@@ -152,6 +152,21 @@ func test_start_screen_shows_hero_and_unwrapped_how_to() -> void:
 	assert_lte(start._how_to.get_line_count(), 4, "how-to fits in four lines without wrapping")
 
 
+func test_shop_shows_your_dice_and_updates_after_buying() -> void:
+	RunCoordinator.new_run(3)
+	RunCoordinator.bag.add(&"glass", 1)
+	RunCoordinator.bag.add_carved(&"standard", 5, &"gem")
+	var shop: Control = SHOP_SCENE.instantiate()
+	add_child_autofree(shop)
+	var cfg: ThrowConfig = load("res://resources/throw_config.tres")
+	assert_eq(shop._dice_label.text, "%d Bone  ·  1 Glass  ·  1 Gem 5" % cfg.starting_bag_size)
+	RunCoordinator.bag.add(&"iron", 2)
+	shop._update_owned_label()
+	assert_true(shop._dice_label.text.ends_with("2 Iron"), "refreshes after a purchase")
+	# The offer heading sits right above the cards; BUYs stay in the bottom 55%.
+	assert_lt(shop._offer_container.offset_top - shop._status_label.offset_bottom, 20.0)
+
+
 func test_felt_fills_the_tray_behind_the_dice() -> void:
 	var scene := _throw_scene()
 	await wait_frames(2)

@@ -44,6 +44,9 @@ var _offer_carved: Array[CarvedDieOffer] = []
 var _buy_buttons: Array[Button] = []
 var _owned_label: Label
 var _owned_icons: HBoxContainer
+var _build_caption: Label
+var _dice_caption: Label
+var _dice_label: Label
 var _gold_panel: Panel
 
 @onready var _gold_label: Label = $GoldLabel
@@ -69,6 +72,13 @@ func _ready() -> void:
 	_owned_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_owned_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_owned_label)
+	_build_caption = _caption("YOUR BUILD")
+	_dice_caption = _caption("YOUR DICE")
+	_dice_label = Label.new()
+	_dice_label.theme_type_variation = &"CardBody"
+	_dice_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_dice_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	add_child(_dice_label)
 	_offer_container.add_theme_constant_override("separation", 24)
 	_continue_button.theme_type_variation = &"ThrowButton"
 	SmokeOverlay.add_backdrop(self)
@@ -91,9 +101,14 @@ func _apply_layout() -> void:
 	if _gold_panel != null:
 		_set_rect(_gold_panel, 0.0, 0.0, 1.0, 0.0, 24.0, 20.0, -24.0, 200.0)
 	_set_rect(_gold_label, 0.0, 0.0, 1.0, 0.0, 40.0, 40.0, -40.0, 180.0)
+	# Two groups: what you have (build, dice) up top; what you can buy below, with
+	# its heading sitting right on the cards.
 	if _owned_label != null:
-		_set_rect(_owned_label, 0.0, 0.0, 1.0, 0.0, 60.0, 240.0, -60.0, 400.0)
-	_set_rect(_status_label, 0.0, 0.0, 1.0, 0.0, 40.0, 900.0, -40.0, 1060.0)
+		_set_rect(_build_caption, 0.0, 0.0, 1.0, 0.0, 60.0, 232.0, -60.0, 272.0)
+		_set_rect(_owned_label, 0.0, 0.0, 1.0, 0.0, 60.0, 450.0, -60.0, 540.0)
+		_set_rect(_dice_caption, 0.0, 0.0, 1.0, 0.0, 60.0, 600.0, -60.0, 640.0)
+		_set_rect(_dice_label, 0.0, 0.0, 1.0, 0.0, 60.0, 645.0, -60.0, 780.0)
+	_set_rect(_status_label, 0.0, 0.0, 1.0, 0.0, 40.0, 990.0, -40.0, 1090.0)
 	_set_rect(_offer_container, 0.0, 0.0, 1.0, 0.0, 40.0, 1100.0, -40.0, 1960.0)
 	_set_rect(_reroll_button, 0.0, 1.0, 0.5, 1.0, 40.0, -300.0, -12.0, -120.0)
 	_set_rect(_continue_button, 0.5, 1.0, 1.0, 1.0, 12.0, -300.0, -40.0, -120.0)
@@ -253,6 +268,17 @@ func _on_continue_pressed() -> void:
 	RunCoordinator.on_shop_continued()
 
 
+func _caption(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", 28)
+	l.add_theme_color_override("font_color", UiStyle.MUTED)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(l)
+	return l
+
+
 func _update_gold_label() -> void:
 	_gold_label.text = "Gold: %d" % _ledger.gold
 
@@ -269,7 +295,8 @@ func _update_owned_label() -> void:
 		_owned_icons.queue_free()
 	_owned_icons = UiStyle.charm_row(RunCoordinator.inventory.iter_charms(), CharmInventory.MAX_SLOTS, 150.0)
 	add_child(_owned_icons)
-	_set_rect(_owned_icons, 0.0, 0.0, 1.0, 0.0, 40.0, 420.0, -40.0, 580.0)
+	_set_rect(_owned_icons, 0.0, 0.0, 1.0, 0.0, 40.0, 282.0, -40.0, 442.0)
+	_dice_label.text = RunCoordinator.bag.summary()
 
 
 func _update_button_states() -> void:

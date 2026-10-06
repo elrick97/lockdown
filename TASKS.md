@@ -67,6 +67,8 @@
 - [x] Start screen: Blender-rendered hero, idle float, PLAY pulse, tighter how-to `add-start-hero-art`
 - [x] Shop icons for dice, carved dice and trinkets; trinket buttons show their chip `add-shop-icons`
 - [x] End-of-run panel: stamped result, final-total count-up, build caption, draw-order fix `add-end-run-polish`
+- [x] Tap to skip the score build-up `add-cascade-tap-skip`
+- [x] Shop grouped into your build / your dice / offers `add-shop-layout-groups`
 - [x] Art direction exploration: 3 style frames, pick one `add-art-direction` *(picked B "Smoke Room", logged in PRD §5)*
 - [x] UI layout pass: thumb-zone audit `add-smoke-room-ui` *(audited locally per owner rule: every control ≥ 48 dp in the thumb zone, tested)*
 - [x] Placeholder → first-pass dice/charm art for slice content `add-smoke-room-dice` `add-smoke-room-table` `add-smoke-room-ui-art` `add-charm-icons`

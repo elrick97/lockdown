@@ -44,6 +44,28 @@ func return_dice(dice: Array[Die]) -> void:
 	_dice.append_array(dice)
 
 
+## What the bag holds, for display: "6 Bone · 1 Glass · 1 Gem 5" (shop-scene spec).
+## Read-only; order is first appearance in the bag.
+func summary() -> String:
+	var order: Array[String] = []
+	var counts := {}
+	for d in _dice:
+		var label: String
+		if d.carve_type != &"":
+			label = "%s %d" % [String(d.carve_type).capitalize(), d.carved_face]
+		else:
+			var mat := DiceMaterial.by_id(d.material_id)
+			label = mat.display_name if mat != null else String(d.material_id)
+		if not counts.has(label):
+			counts[label] = 0
+			order.append(label)
+		counts[label] += 1
+	var parts: Array[String] = []
+	for label in order:
+		parts.append("%d %s" % [counts[label], label])
+	return "  ·  ".join(parts)
+
+
 func add(material: StringName, count: int = 1) -> void:
 	for i in count:
 		_dice.append(Die.new(material))
