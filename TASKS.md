@@ -111,6 +111,7 @@
 - [ ] Name decision final (trademark + store search check)
 - [ ] Store listings: screenshots, video capture, copy (DE + EN)
 - [ ] Web demo build (2 antes) on itch.io
+  - [x] Web build on GitHub Pages pulled forward by owner directive 2026-10-06 `add-web-export` — https://elrick97.github.io/lockdown/ (itch.io upload still open)
 - [ ] Pricing decision + regional pricing
 - [ ] PEGI/USK questionnaire (note dice/gambling-adjacency answers)
 - [ ] Privacy policy + data safety forms (no data collected — keep it that way)
