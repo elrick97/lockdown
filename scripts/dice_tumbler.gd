@@ -125,6 +125,11 @@ func flash_die(_index: int, _color: Color, _duration: float) -> void:
 	pass
 
 
+## A short side-to-side wiggle: "this die can't be locked" (already locked or dead).
+func deny_die(_index: int) -> void:
+	pass
+
+
 ## Scale die `index` up to `amount` and back over `duration` s (lock / score punch).
 func punch_die(_index: int, _amount: float, _duration: float) -> void:
 	pass

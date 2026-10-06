@@ -295,24 +295,28 @@ func _gui_input(event: InputEvent) -> void:
 	_try_lock_at(get_global_transform() * mb.position)
 
 
-## Tap forgiveness (throw-loop spec): lock the nearest unlocked die whose
-## bounds are within tap_forgiveness_radius_px of the tap point.
+## Tap forgiveness (throw-loop spec): the tap resolves to the nearest die of any
+## state within tap_forgiveness_radius_px. An unlocked die locks; a locked or
+## shattered die only wiggles "denied", so a tap aimed at a locked die can never
+## forgive over to its neighbour (locks are irreversible).
 func _try_lock_at(point: Vector2) -> void:
 	if _tumbler == null:
 		return
 	var best := -1
 	var best_dist := INF
 	for i in _controller.faces.size():
-		if _controller.locked[i] or _controller.is_shattered(i):
-			continue
 		var rect := _tumbler.die_rect(i)
 		var clamped := point.clamp(rect.position, rect.end)
 		var dist := point.distance_to(clamped)
 		if dist < best_dist:
 			best_dist = dist
 			best = i
-	if best >= 0 and best_dist <= _config.tap_forgiveness_radius_px:
-		_controller.lock_die(best)
+	if best < 0 or best_dist > _config.tap_forgiveness_radius_px:
+		return
+	if _controller.locked[best] or _controller.is_shattered(best):
+		_tumbler.deny_die(best)
+		return
+	_controller.lock_die(best)
 
 
 func _on_throw_pressed() -> void:

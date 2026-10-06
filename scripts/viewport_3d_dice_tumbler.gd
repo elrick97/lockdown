@@ -219,6 +219,18 @@ func flash_die(index: int, color: Color, duration: float) -> void:
 	t.tween_property(_mats[index], "albedo_color", _resting_tint(index), duration * 0.5)
 
 
+func deny_die(index: int) -> void:
+	if index < 0 or index >= _dice_nodes.size():
+		return
+	var node := _dice_nodes[index]
+	# Remember the resting spot once, so repeated taps mid-wiggle never drift the die.
+	var home: Vector3 = node.get_meta(&"deny_home", node.position)
+	node.set_meta(&"deny_home", home)
+	var t := create_tween()
+	for dx: float in [0.08, -0.07, 0.05, -0.03, 0.0]:
+		t.tween_property(node, "position:x", home.x + dx, 0.035)
+
+
 func punch_die(index: int, amount: float, duration: float) -> void:
 	if index < 0 or index >= _dice_nodes.size():
 		return
