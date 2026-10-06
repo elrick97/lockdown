@@ -19,6 +19,7 @@ var _fx: FeedbackConfig = preload("res://resources/feedback_config.tres")
 var _hud: ScoreHud
 var _timer_fill: NinePatchRect
 var _shake_tween: Tween
+var _skip_hint: Label
 var _scoring := ScoringEngine.new()
 var _bag: DiceBag
 var _controller: ThrowController
@@ -110,6 +111,16 @@ func _ready() -> void:
 	_trinket_row = HBoxContainer.new()
 	_trinket_row.visible = false
 	add_child(_trinket_row)
+	# Shown only while the score builds up, in the (then empty) trinket row band.
+	_skip_hint = Label.new()
+	_skip_hint.text = "TAP TO SKIP"
+	_skip_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_skip_hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_skip_hint.add_theme_font_size_override("font_size", 30)
+	_skip_hint.add_theme_color_override("font_color", UiStyle.MUTED)
+	_skip_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_skip_hint.visible = false
+	add_child(_skip_hint)
 	_sfx_lock = AudioStreamPlayer.new()
 	add_child(_sfx_lock)
 	_sfx_combo = AudioStreamPlayer.new()
@@ -187,6 +198,8 @@ func _apply_layout() -> void:
 		_set_rect(_skip_button, 0.5, 0.0, 0.5, 0.0, -260.0, 1800.0, 260.0, 1930.0)
 	if _trinket_row != null:
 		_set_rect(_trinket_row, 0.0, 0.0, 1.0, 0.0, 40.0, 1800.0, -40.0, 1930.0)
+	if _skip_hint != null:
+		_set_rect(_skip_hint, 0.0, 0.0, 1.0, 0.0, 40.0, 1820.0, -40.0, 1910.0)
 	if _end_panel != null:
 		_end_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		# End-of-run card (run-flow spec): stamped title, the final total counting up,
@@ -270,6 +283,11 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	var mb := event as InputEventMouseButton
 	if mb == null or not mb.pressed or mb.button_index != MOUSE_BUTTON_LEFT:
+		return
+	# Tap-to-skip (score-cascade spec): any tap off the buttons ends the build-up.
+	if _cascade != null and _cascade.is_playing():
+		if _cascade.elapsed_s() >= _fx.skip_grace_s:
+			_cascade.skip()
 		return
 	# Use the event's own position (local to this Control) in the die rects' global
 	# space; never the OS cursor. Touch arrives as emulated mouse events, and the
@@ -436,11 +454,13 @@ func _on_resolved(result: ThrowResult) -> void:
 	_cascade = ScoreCascade.new(self, _tumbler, _hud, _result, _total_label, _scoring_config, _fx)
 	_cascade.shake_requested.connect(_screen_shake)
 	_cascade.finished.connect(_on_cascade_finished)
+	_skip_hint.visible = true
 	_cascade.charm_triggered.connect(_pulse_charm)
 	_cascade.play(breakdown, old_total, new_total, _round.target)
 
 
 func _on_cascade_finished() -> void:
+	_skip_hint.visible = false
 	RunCoordinator.record_throw(_cascade.final_score)
 	_round.add_score(_cascade.final_score)
 	if _round.is_done:

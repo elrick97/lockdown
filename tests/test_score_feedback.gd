@@ -52,6 +52,36 @@ func test_hud_draws_above_the_table_and_below_the_end_panel() -> void:
 	assert_eq(scene._hud.mouse_filter, Control.MOUSE_FILTER_IGNORE, "HUD never eats taps")
 
 
+func _tap(scene: Control) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = true
+	ev.position = Vector2(540, 1100)
+	scene._gui_input(ev)
+
+
+func _resolve_all(scene: Control) -> void:
+	scene._round.target = 1000000
+	_open_window(scene)
+	for i in scene._controller.faces.size():
+		scene._controller.lock_die(i)
+	assert_true(scene._cascade.is_playing())
+
+
+func test_tap_skips_the_cascade_after_the_grace() -> void:
+	var scene := _scene()
+	_resolve_all(scene)
+	assert_true(scene._skip_hint.visible, "TAP TO SKIP shown while the score builds")
+	_tap(scene)
+	assert_true(scene._cascade.is_playing(), "a tap inside the grace does not skip")
+	scene._cascade._started_ms -= int(scene._fx.skip_grace_s * 1000.0) + 50
+	_tap(scene)
+	assert_false(scene._cascade.is_playing(), "a later tap skips to the end")
+	assert_false(scene._throw_button.disabled, "THROW is back right away")
+	assert_false(scene._skip_hint.visible, "hint hidden")
+	assert_eq(scene._result.text, "%d pts" % scene._cascade.final_score, "lands on the real score")
+
+
 func test_throw_disabled_until_cascade_finishes() -> void:
 	var scene := _scene()
 	scene._round.target = 1000000  # keep the round open whatever this throw scores

@@ -36,6 +36,7 @@ var _old_total: int = 0
 var _new_total: int = 0
 var _target: int = 0
 var _done := false
+var _started_ms: int = -1
 
 
 func _init(p_scene: Node, p_tumbler: DiceTumbler, p_hud: ScoreHud, p_result: Label,
@@ -98,6 +99,7 @@ func play(breakdown: ScoreBreakdown, old_total: int, new_total: int, target: int
 	_result_label.scale = Vector2.ONE
 	var tier := FeedbackConfig.tier_of(breakdown)
 
+	_started_ms = Time.get_ticks_msec()
 	_tween = _scene.create_tween()
 	_tween.set_parallel(false)
 	for step in _steps:
@@ -117,6 +119,16 @@ func play(breakdown: ScoreBreakdown, old_total: int, new_total: int, target: int
 		_tween.tween_callback(_target_hit)
 		_tween.tween_interval(_fx.target_hit_s)
 	_tween.tween_callback(_finish)
+
+
+## True while the cascade is animating (between play() and finished).
+func is_playing() -> bool:
+	return _started_ms >= 0 and not _done
+
+
+## Seconds since play() started (tap-to-skip grace).
+func elapsed_s() -> float:
+	return 0.0 if _started_ms < 0 else (Time.get_ticks_msec() - _started_ms) / 1000.0
 
 
 ## Immediately resolves the cascade to final state. Safe to call at any point.
