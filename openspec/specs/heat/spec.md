@@ -4,9 +4,7 @@
 Heat, the multiplier that converts time left in the lock windows into score, plus the Steady Mode fixed-Heat seam.
 
 Named tunables on `ScoringConfig` (current values): `heat_min` = **1.0**, `heat_max` = **1.5**, `steady_heat` = **1.25** (population-average placeholder for Steady Mode).
-
 ## Requirements
-
 ### Requirement: Heat from total remaining time
 Heat SHALL be computed from the total remaining time across the three lock windows (the `window_remaining_s` array on the resolved throw). Let `total_possible = 3 × lock_window_duration_s`. Then `Heat = heat_min + (heat_max − heat_min) × clamp(total_remaining / total_possible, 0, 1)`. Locking everything in window 1 credits all three windows at full duration and yields `heat_max`; letting every window expire yields `heat_min`.
 
@@ -35,3 +33,17 @@ The Heat computation SHALL accept a "timers disabled" mode that returns the cons
 #### Scenario: Steady Mode returns the constant
 - **WHEN** Heat is computed in Steady (timers-disabled) mode
 - **THEN** the result is `steady_heat` (×1.25), independent of the window times
+
+### Requirement: Live Heat readout during windows
+While a lock window is open, the HEAT plaque SHALL show the Heat the throw would get if every unlocked die were locked now. That is `Heat.from_remaining(ThrowController.projected_window_remaining(), …)`, where:
+- past windows keep their recorded remaining time;
+- the current window uses its time left;
+- later windows count as full, matching what locking everything records.
+
+The readout drops as time drains. It is display only: the Heat formula and scoring are unchanged. At resolution, the cascade shows the breakdown's actual Heat.
+
+#### Scenario: Readout tracks the clock
+- **GIVEN** a 2.5 s window with 0.5 s elapsed in Window 1
+- **WHEN** the HUD updates
+- **THEN** HEAT shows `from_remaining([2.0, 2.5, 2.5])`
+

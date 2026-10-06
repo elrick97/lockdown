@@ -1,8 +1,5 @@
-# score-cascade Specification
+## MODIFIED Requirements
 
-## Purpose
-Animated score reveal sequence played after every throw resolution. Provides the "jackpot payoff" feedback loop: locked dice flash gold, combo label pops in, throw score ticks up, round total ticks up. Implemented in `ScoreCascade` (RefCounted); the scene drives it via signal.
-## Requirements
 ### Requirement: Cascade plays after every throw resolution
 After `ThrowController` emits `resolved`, the system SHALL play the score cascade before re-enabling THROW. The breakdown plays out on the **CHIPS**, **MULT** and **HEAT** plaques above the table as a sequence of steps built from the `ScoreBreakdown` (`ScoreCascade.build_steps`):
 1. **Dice:** each scoring die, in index order, flashes gold and punches. Its pips (as scored, including material and Wild adjustments) float up from it as "+n" and are added to CHIPS.
@@ -76,6 +73,8 @@ Each scoring die SHALL flash gold (`Color(1.0, 0.82, 0.2)`) and punch to `lock_p
 - **WHEN** the cascade begins with three scoring dice
 - **THEN** die 0, then die 1, then die 2 flash, punch and float their pips, before the combo stamp
 
+## ADDED Requirements
+
 ### Requirement: Feedback scales with the combo tier
 Combo tiers SHALL be:
 
@@ -111,4 +110,3 @@ A target progress bar SHALL sit in the HUD under the round total, filled to `tot
 #### Scenario: Crossing the target
 - **WHEN** a throw takes the round total from below the target to at or above it
 - **THEN** `target_hit` fires and the flourish plays before the shop
-

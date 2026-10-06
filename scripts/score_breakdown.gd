@@ -18,6 +18,11 @@ var charm_mult: float = 0.0
 ## { slot: int, chips: int, mult: float } (deltas). Presentation only (trigger pulse).
 var charm_triggers: Array = []
 var heat: float = 1.0
+## Presentation detail for the score cascade (score-cascade spec); never read by scoring.
+## Each scoring die's pips in index order: { idx: int, pips: int }. Sums to `pips`.
+var die_pips: Array = []
+## Gem carve chips, already included in charm_chips.
+var gem_chips: int = 0
 var final_score: int = 0
 
 

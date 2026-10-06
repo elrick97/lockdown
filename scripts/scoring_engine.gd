@@ -53,6 +53,8 @@ func score(result: ThrowResult, config: ScoringConfig,
 
 	var bd := _build_breakdown(chosen, combo_locked, pips, heat, config)
 	bd.charm_chips += gem_chips
+	bd.gem_chips = gem_chips
+	bd.die_pips = _die_pips(combo_locked, result)
 
 	# Fire charm on_score hooks in slot order before computing final total.
 	if inventory != null:
@@ -80,11 +82,24 @@ func score(result: ThrowResult, config: ScoringConfig,
 func _pips_of(dice: Array, result: ThrowResult) -> int:
 	var pips := 0
 	for d in dice:
-		var idx: int = d.idx
-		var offset: int = result.pip_offsets[idx] if idx < result.pip_offsets.size() else 0
-		var mult: int = result.pip_multipliers[idx] if idx < result.pip_multipliers.size() else 1
-		pips += maxi(0, d.face + offset) * mult
+		pips += _die_pip(d, result)
 	return pips
+
+
+func _die_pip(d: Dictionary, result: ThrowResult) -> int:
+	var idx: int = d.idx
+	var offset: int = result.pip_offsets[idx] if idx < result.pip_offsets.size() else 0
+	var mult: int = result.pip_multipliers[idx] if idx < result.pip_multipliers.size() else 1
+	return maxi(0, d.face + offset) * mult
+
+
+## Per-die pips in index order, as scored (presentation: the cascade's "+n" per die).
+func _die_pips(dice: Array, result: ThrowResult) -> Array:
+	var out: Array = []
+	for d in dice:
+		out.append({"idx": int(d.idx), "pips": _die_pip(d, result)})
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a.idx < b.idx)
+	return out
 
 
 func _counts_of(locked: Array) -> Array:

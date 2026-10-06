@@ -123,3 +123,8 @@ func _render_face(_index: int, _face: int, _is_locked: bool) -> void:
 ## Flash die `index` to `color` and back to its resting look over `duration` s.
 func flash_die(_index: int, _color: Color, _duration: float) -> void:
 	pass
+
+
+## Scale die `index` up to `amount` and back over `duration` s (lock / score punch).
+func punch_die(_index: int, _amount: float, _duration: float) -> void:
+	pass

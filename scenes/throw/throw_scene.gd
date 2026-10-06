@@ -10,10 +10,15 @@ const MAX_COUNTDOWN_STEP_S := 0.1
 const START_SCENE := "res://scenes/start/start_scene.tscn"
 const CHARM_SLOTS := 5
 const FELT := preload("res://assets/table/felt.png")
+const URGENT_TINT := Color(1.0, 0.22, 0.18)
 
 var _config: ThrowConfig = preload("res://resources/throw_config.tres")
 var _scoring_config: ScoringConfig = preload("res://resources/scoring_config.tres")
 var _ante_config: AnteConfig = preload("res://resources/ante_arc.tres")
+var _fx: FeedbackConfig = preload("res://resources/feedback_config.tres")
+var _hud: ScoreHud
+var _timer_fill: NinePatchRect
+var _shake_tween: Tween
 var _scoring := ScoringEngine.new()
 var _bag: DiceBag
 var _controller: ThrowController
@@ -66,9 +71,9 @@ func _ready() -> void:
 	add_child(_timer_track)
 	move_child(_timer_track, _timer_bar.get_index())
 	_timer_bar.color = Color(0, 0, 0, 0)
-	var fill := UiStyle.nine_patch("timer_fill", UiStyle.TIMER_FILL_MARGINS)
-	_timer_bar.add_child(fill)
-	fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_timer_fill = UiStyle.nine_patch("timer_fill", UiStyle.TIMER_FILL_MARGINS)
+	_timer_bar.add_child(_timer_fill)
+	_timer_fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_total_plaque = Panel.new()
 	_total_plaque.theme_type_variation = &"PlaquePanel"
 	_total_plaque.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -78,6 +83,9 @@ func _ready() -> void:
 	_total_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_throw_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_result.theme_type_variation = &"HudValue"
+	_result.add_theme_font_size_override("font_size", 76)
+	_result.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_result.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_throw_button.theme_type_variation = &"ThrowButton"
 	_charm_row = HBoxContainer.new()
 	_charm_row.add_theme_constant_override("separation", 20)
@@ -104,6 +112,10 @@ func _ready() -> void:
 	_sfx_combo = AudioStreamPlayer.new()
 	add_child(_sfx_combo)
 	_build_end_panel()
+	# Score readout above the table, below the end panel and focus cover (score-cascade spec).
+	_hud = ScoreHud.new()
+	add_child(_hud)
+	move_child(_hud, _end_panel.get_index())
 	_apply_layout()
 	get_viewport().size_changed.connect(_apply_layout)
 
@@ -145,15 +157,18 @@ func _apply_layout() -> void:
 	if _hud_panel != null:
 		_set_rect(_hud_panel, 0.0, 0.0, 1.0, 0.0, 24.0, 20.0, -24.0, 250.0)
 	_set_rect(_ante_label, 0.0, 0.0, 1.0, 0.0, 40.0, 34.0, -40.0, 124.0)
-	_set_rect(_throw_label, 0.0, 0.0, 0.5, 0.0, 40.0, 134.0, 0.0, 234.0)
-	_set_rect(_total_label, 0.5, 0.0, 1.0, 0.0, 0.0, 134.0, -40.0, 234.0)
+	_set_rect(_throw_label, 0.0, 0.0, 0.5, 0.0, 40.0, 120.0, 0.0, 206.0)
+	_set_rect(_total_label, 0.5, 0.0, 1.0, 0.0, 0.0, 120.0, -40.0, 206.0)
 	_set_rect(_status, 0.0, 0.0, 1.0, 0.0, 40.0, 270.0, -40.0, 360.0)
-	_set_rect(_result, 0.0, 0.0, 1.0, 0.0, 40.0, 370.0, -40.0, 600.0)
+	_set_rect(_result, 0.0, 0.0, 1.0, 0.0, 40.0, 494.0, -40.0, 598.0)
+	if _hud != null:
+		var vs := get_viewport_rect().size
+		_hud.stamp_center = Vector2(vs.x * 0.5, vs.y * (0.27 + 0.66) * 0.5)
 	if _timer_track != null:
 		_set_rect(_timer_track, 0.0, 0.0, 0.0, 0.0, 30.0, 600.0, 1050.0, 656.0)
 	_set_rect(_timer_bar, 0.0, 0.0, 0.0, 0.0, 40.0, 610.0, 1040.0, 646.0)
 	if _total_plaque != null:
-		_set_rect(_total_plaque, 0.5, 0.0, 1.0, 0.0, 10.0, 132.0, -48.0, 236.0)
+		_set_rect(_total_plaque, 0.5, 0.0, 1.0, 0.0, 10.0, 118.0, -48.0, 206.0)
 	_set_rect(_tray, 0.0, 0.27, 1.0, 0.66, 0.0, 0.0, 0.0, 0.0)
 	if _charm_row != null:
 		_set_rect(_charm_row, 0.0, 0.0, 1.0, 0.0, 40.0, 1610.0, -40.0, 1770.0)
@@ -211,13 +226,30 @@ func _update_visuals() -> void:
 			_timer_bar.visible = false
 			_trinket_row.visible = false
 			_tumbler.tick(get_process_delta_time())
+			_update_urgency(INF)
 		ThrowController.State.LOCK_WINDOW:
 			_timer_bar.visible = true
 			_trinket_row.visible = true
-			var fraction := _controller.time_remaining() / _effective_window_s
-			_timer_bar.size.x = TIMER_BAR_FULL_WIDTH * fraction
+			var left := _controller.time_remaining()
+			_timer_bar.size.x = TIMER_BAR_FULL_WIDTH * left / _effective_window_s
+			# Live Heat: what locking everything right now would score (heat spec).
+			_hud.set_heat(Heat.from_remaining(_controller.projected_window_remaining(),
+				_scoring_config, _effective_window_s))
+			_update_urgency(left)
 		_:
 			pass
+
+
+## Timer urgency (throw-loop spec): the last urgency_s pulses toward oxblood.
+func _update_urgency(left: float) -> void:
+	if left >= _fx.urgency_s:
+		_timer_fill.modulate = Color.WHITE
+		_timer_track.modulate = Color.WHITE
+		return
+	var k := 1.0 - left / _fx.urgency_s
+	var pulse := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.03)
+	_timer_fill.modulate = Color.WHITE.lerp(URGENT_TINT, k).lightened(0.3 * pulse)
+	_timer_track.modulate = Color.WHITE.lerp(Color(1.4, 0.7, 0.6), k * pulse)
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -255,6 +287,8 @@ func _try_lock_at(point: Vector2) -> void:
 func _on_throw_pressed() -> void:
 	_result.text = ""
 	_result.scale = Vector2.ONE  # reset in case previous cascade was interrupted
+	_hud.clear_transients()
+	_hud.reset(_scoring_config.heat_max)
 	_throw_button.disabled = true
 	_skip_button.visible = false
 	_rebuild_trinket_buttons()
@@ -316,6 +350,8 @@ func _update_round_labels() -> void:
 	_ante_label.text = "ANTE %d / %d%s" % [_arc.current_ante, _ante_config.targets.size(), round_name]
 	_throw_label.text = "Throw %d / %d" % [_round.current_throw, _ante_config.throws_per_round]
 	_total_label.text = "Total: %d / %d" % [_round.total, _round.target]
+	if _hud != null:
+		_hud.set_target_fraction(float(_round.total) / float(maxi(_round.target, 1)))
 
 
 func _on_window_started(window_index: int) -> void:
@@ -325,6 +361,9 @@ func _on_window_started(window_index: int) -> void:
 
 func _on_die_locked(die_index: int, _window_index: int) -> void:
 	_tumbler.lock_die(die_index, _controller.faces[die_index])
+	# Lock feedback (throw-loop spec): the die punches and the table nudges.
+	_tumbler.punch_die(die_index, _fx.lock_punch_scale, _fx.lock_punch_s)
+	_screen_shake(_fx.lock_shake_px, _fx.lock_shake_s)
 	Input.vibrate_handheld(30)
 	if _sfx_lock != null and _sfx_lock.stream != null:
 		_sfx_lock.play()
@@ -350,7 +389,12 @@ func _on_carve_activated(_die_index: int, carve_type: StringName) -> void:
 
 
 func _screen_shake(amplitude: float, duration: float) -> void:
+	if amplitude <= 0.0 or duration <= 0.0:
+		return
+	if _shake_tween != null and _shake_tween.is_valid():
+		_shake_tween.kill()
 	var tween := create_tween()
+	_shake_tween = tween
 	var steps := 6
 	for i in steps:
 		var t := duration / steps
@@ -363,16 +407,17 @@ func _screen_shake(amplitude: float, duration: float) -> void:
 
 func _on_resolved(result: ThrowResult) -> void:
 	_timer_bar.visible = false
+	_update_urgency(INF)
+	_status.text = ""  # the score build-up owns this band until it lands
 	_mark_dead_slots()
 	_tumbler.reveal(_controller.faces, _controller.locked)
 	var breakdown := _scoring.score(result, _scoring_config, _effective_window_s, false, RunCoordinator.inventory)
-	if not breakdown.combos.is_empty():
-		_screen_shake(8.0, 0.25)
-		if _sfx_combo != null and _sfx_combo.stream != null:
-			_sfx_combo.play()
+	if not breakdown.combos.is_empty() and _sfx_combo != null and _sfx_combo.stream != null:
+		_sfx_combo.play()
 	var old_total := _round.total
 	var new_total := old_total + breakdown.final_score
-	_cascade = ScoreCascade.new(self, _tumbler, _result, _total_label, _scoring_config)
+	_cascade = ScoreCascade.new(self, _tumbler, _hud, _result, _total_label, _scoring_config, _fx)
+	_cascade.shake_requested.connect(_screen_shake)
 	_cascade.finished.connect(_on_cascade_finished)
 	_cascade.charm_triggered.connect(_pulse_charm)
 	_cascade.play(breakdown, old_total, new_total, _round.target)

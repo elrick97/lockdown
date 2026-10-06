@@ -136,7 +136,7 @@ func _scenario_dice_materials() -> void:
 func _scenario_carving() -> void:
 	_section("add-carving-service")
 	var seen := {}
-	for attempt in 12:
+	for attempt in 24:
 		if seen.size() == 3:
 			break
 		var scene := await _load_run(1, func(bag: DiceBag) -> void:
@@ -166,7 +166,7 @@ func _scenario_carving() -> void:
 		var r: ThrowResult = ctrl.last_result
 		var b := _score(scene, r)
 		if &"gem" in activated:
-			_check(b.bonus_chips >= 20, "Gem: locked Gem face adds +20 chips (bonus_chips %d)" % b.bonus_chips)
+			_check(b.gem_chips >= 20, "Gem: locked Gem face adds +20 chips (gem_chips %d)" % b.gem_chips)
 		if &"wild" in activated:
 			var wild_i := r.carve_types.find(&"wild")
 			_check(_in_combos(b, wild_i), "Wild: the Wild die joins a combo (%s)" % b.describe())
@@ -182,7 +182,7 @@ func _scenario_carving() -> void:
 		if &"gem" in activated:
 			await _screenshot("carving_gem_scored")
 	for t: StringName in [&"wild", &"gem", &"spark"]:
-		_check(seen.has(t), "%s face came up and was locked within 12 throws" % t)
+		_check(seen.has(t), "%s face came up and was locked within 24 throws" % t)
 
 
 func _scenario_trinkets() -> void:
@@ -289,6 +289,7 @@ func _scenario_run_flow() -> void:
 func _scenario_juice() -> void:
 	_section("add-juice-pass")
 	var scene := await _load_run(1, Callable())
+	scene._round.target = 1000000  # keep the round open so the whole cascade plays here
 	var locks: Array[int] = []  # lambdas capture ints by value; append to a shared array
 	scene._controller.die_locked.connect(func(i: int, _w: int) -> void: locks.append(i))
 	_press(scene._throw_button)
@@ -298,15 +299,33 @@ func _scenario_juice() -> void:
 		"Lock haptic path ran for every lock (%d); Input.vibrate_handheld is a no-op on desktop" % locks.size())
 	await _wait(func() -> bool: return scene._controller.state == ThrowController.State.RESOLVED)
 	var b := _score(scene, scene._controller.last_result)
+	# add-score-feedback: the combo stamps in after the per-die steps, so watch the
+	# whole build-up; grab the frame where the stamp lands and one mid-tick.
 	var max_offset := 0.0
+	var stamp_seen := false
+	var tick_shot := false
+	var chips_seen := 0
 	var t0 := Time.get_ticks_msec()
-	while Time.get_ticks_msec() - t0 < 400:
-		max_offset = maxf(max_offset, absf(scene.position.x))
+	while Time.get_ticks_msec() - t0 < 6000 and scene._throw_button.disabled:
+		if absf(scene.position.x) > 0.0 and scene._hud.stamp_label.visible:
+			max_offset = maxf(max_offset, absf(scene.position.x))
+		chips_seen = maxi(chips_seen, int(scene._hud.chips_label.text))
+		if scene._hud.stamp_label.visible and not stamp_seen:
+			stamp_seen = true
+			await _screenshot("feedback_stamp")
+		if not tick_shot and scene._result.text.ends_with("pts") and scene._hud.transient_count() > 0:
+			tick_shot = true
+			await _screenshot("feedback_tick")
 		await process_frame
 	if b.combos.is_empty():
-		_check(max_offset == 0.0, "No combo → no shake")
+		_check(max_offset == 0.0 and not stamp_seen, "No combo → no stamp, no shake")
 	else:
-		_check(max_offset > 2.0, "Combo landed (%s) → screen shook (max offset %.1f px)" % [b.describe(), max_offset])
+		_check(stamp_seen, "Combo stamped onto the table (%s)" % b.describe())
+		_check(max_offset > 2.0, "Combo landed → screen shook (max offset %.1f px)" % max_offset)
+	var sums := ScoreCascade.sum_steps(ScoreCascade.build_steps(b, 1))
+	_check(scene._hud.chips_label.text == str(sums.chips) and chips_seen == int(sums.chips),
+		"CHIPS built up to the breakdown (%s)" % scene._hud.chips_label.text)
+	_check(scene._result.text == "%d pts" % b.final_score, "Throw score landed on %d" % b.final_score)
 	_check(scene.position == Vector2.ZERO, "Shake settles back to the origin")
 	await _screenshot("juice_after_shake")
 

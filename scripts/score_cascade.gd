@@ -1,15 +1,21 @@
 class_name ScoreCascade
 extends RefCounted
 ## Animated score reveal played after every throw resolution (score-cascade spec).
-## Owns the Tween chain: die flash → combo label pop → score tick → total tick.
+## The breakdown plays out as steps on the CHIPS × MULT × HEAT plaques: each scoring
+## die adds its pips, the combo stamps in (shake + sparks by tier) and adds its chips
+## and mult, triggered charms pulse and add theirs, Heat multiplies, then the throw
+## score ticks up and pours into the round total. What is shown sums to what is scored.
 ## Call skip() to resolve instantly (headless tests, balance sim).
 
 signal finished
 ## A charm whose on_score changed this throw (breakdown.charm_triggers), in slot order.
 signal charm_triggered(slot: int)
+## Screen shake request (the scene owns the shake).
+signal shake_requested(amplitude_px: float, duration_s: float)
+signal target_hit
 
 const COLOR_FLASH := Color(1.0, 0.82, 0.2)
-const CHARM_PULSE_GAP_S := 0.18
+const COLOR_MINUS := Color(0.85, 0.35, 0.3)
 
 ## Exposed so the scene can read the final score after the cascade completes.
 var final_score: int = 0
@@ -17,85 +23,196 @@ var final_score: int = 0
 var _tween: Tween
 var _scene: Node
 var _tumbler: DiceTumbler
+var _hud: ScoreHud
 var _result_label: Label
 var _total_label: Label
 var _config: ScoringConfig
+var _fx: FeedbackConfig
+var _steps: Array = []
+var _heat: float = 1.0
+var _chips: int = 0
+var _mult: float = 0.0
 var _old_total: int = 0
 var _new_total: int = 0
 var _target: int = 0
+var _done := false
 
 
-func _init(p_scene: Node, p_tumbler: DiceTumbler, p_result: Label,
-		p_total: Label, p_config: ScoringConfig) -> void:
+func _init(p_scene: Node, p_tumbler: DiceTumbler, p_hud: ScoreHud, p_result: Label,
+		p_total: Label, p_config: ScoringConfig, p_fx: FeedbackConfig) -> void:
 	_scene = p_scene
 	_tumbler = p_tumbler
+	_hud = p_hud
 	_result_label = p_result
 	_total_label = p_total
 	_config = p_config
+	_fx = p_fx
 
 
-func play(breakdown: ScoreBreakdown, old_total: int, new_total: int,
-		target: int) -> void:
+## The breakdown as display steps. Pure: summing every step's chips gives
+## pips + bonus_chips + charm_chips, and its mult gives combo_mult + charm_mult.
+static func build_steps(bd: ScoreBreakdown, base_mult: int) -> Array:
+	var steps: Array = []
+	for d in bd.die_pips:
+		steps.append({"kind": &"die", "idx": int(d.idx), "chips": int(d.pips), "mult": 0.0})
+	var names: Array[String] = []
+	var combo_mult := 0
+	for c in bd.combos:
+		names.append(c.name)
+	if not names.is_empty():
+		steps.append({"kind": &"stamp", "text": " + ".join(names), "chips": 0, "mult": 0.0})
+	for c in bd.combos:
+		steps.append({"kind": &"combo", "chips": int(c.chips), "mult": float(c.mult)})
+		combo_mult += int(c.mult)
+	if combo_mult < base_mult:
+		steps.append({"kind": &"base", "chips": 0, "mult": float(base_mult - combo_mult)})
+	if bd.gem_chips != 0:
+		steps.append({"kind": &"gem", "chips": bd.gem_chips, "mult": 0.0})
+	for t in bd.charm_triggers:
+		steps.append({"kind": &"charm", "slot": int(t.slot), "chips": int(t.chips), "mult": float(t.mult)})
+	steps.append({"kind": &"heat", "chips": 0, "mult": 0.0})
+	return steps
+
+
+static func sum_steps(steps: Array) -> Dictionary:
+	var chips := 0
+	var mult := 0.0
+	for s in steps:
+		chips += int(s.chips)
+		mult += float(s.mult)
+	return {"chips": chips, "mult": mult}
+
+
+func play(breakdown: ScoreBreakdown, old_total: int, new_total: int, target: int) -> void:
 	final_score = breakdown.final_score
 	_old_total = old_total
 	_new_total = new_total
 	_target = target
-
-	# Collect locked die indices from the chosen partition (dedup).
-	var locked_indices: Array[int] = []
-	for combo in breakdown.combos:
-		for idx: int in combo.dice_indices:
-			if not locked_indices.has(idx):
-				locked_indices.append(idx)
-
-	# Prime the combo label: invisible, correct text, pivot centred.
-	var parts: Array[String] = []
-	for combo in breakdown.combos:
-		parts.append(combo.name)
-	var combo_text: String = "No score" if parts.is_empty() else " + ".join(parts)
-	var sz := _result_label.size  # read before text change; falls back to 0,0 on first throw
-	_result_label.text = combo_text
-	_result_label.pivot_offset = sz / 2.0 if sz != Vector2.ZERO else Vector2(500.0, 125.0)
-	_result_label.scale = Vector2.ZERO
+	_heat = breakdown.heat
+	_steps = build_steps(breakdown, _config.base_mult)
+	_chips = 0
+	_mult = 0.0
+	_hud.clear_transients()
+	_hud.reset(_heat)
+	_result_label.text = ""
+	_result_label.scale = Vector2.ONE
+	var tier := FeedbackConfig.tier_of(breakdown)
 
 	_tween = _scene.create_tween()
 	_tween.set_parallel(false)
+	for step in _steps:
+		_tween.tween_callback(_apply.bind(step, tier))
+		_tween.tween_interval(_step_s(step))
 
-	# Step 1: flash locked dice gold → back to green, sequentially.
-	var flash_dur := 0.15
-	for idx in locked_indices:
-		_tween.tween_callback(_tumbler.flash_die.bind(idx, COLOR_FLASH, flash_dur))
-		_tween.tween_interval(flash_dur)
-
-	# Step 2: combo label scales in from 0 (BACK ease gives a slight overshoot).
-	_tween.tween_property(_result_label, "scale", Vector2.ONE, 0.2) \
-		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-
-	# Step 2b: each charm that changed the score announces itself (slot pulse).
-	for trig in breakdown.charm_triggers:
-		_tween.tween_callback(charm_triggered.emit.bind(int(trig.slot)))
-		_tween.tween_interval(CHARM_PULSE_GAP_S)
-
-	# Step 3: throw score ticks from 0 to final_score.
-	_tween.tween_method(_tick_score, 0.0, float(final_score),
-		_config.cascade_duration_s) \
+	# The product slams into the throw score; bigger scores tick longer.
+	_tween.tween_method(_tick_score, 0.0, float(final_score), _fx.tick_s(final_score, _config.cascade_duration_s)) \
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_tween.tween_callback(_land)
+	_tween.tween_interval(0.15)
 
-	# Step 4: round total ticks to new value.
-	_tween.tween_method(_tick_total, float(_old_total), float(_new_total), 0.3) \
+	# Then it pours into the round total and the target bar.
+	_tween.tween_method(_tick_total, float(_old_total), float(_new_total), _fx.total_pour_s) \
 		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-
-	_tween.tween_callback(finished.emit)
+	if _target > 0 and _old_total < _target and _new_total >= _target:
+		_tween.tween_callback(_target_hit)
+		_tween.tween_interval(_fx.target_hit_s)
+	_tween.tween_callback(_finish)
 
 
 ## Immediately resolves the cascade to final state. Safe to call at any point.
 func skip() -> void:
 	if _tween != null and _tween.is_valid():
 		_tween.kill()
+	var sums := sum_steps(_steps)
+	if is_instance_valid(_hud):
+		_hud.clear_transients()
+		_hud.set_chips(int(sums.chips))
+		_hud.set_mult(float(sums.mult))
+		_hud.set_heat(_heat)
 	_tick_score(float(final_score))
 	_tick_total(float(_new_total))
 	if is_instance_valid(_result_label):
 		_result_label.scale = Vector2.ONE
+	_finish()
+
+
+func _step_s(step: Dictionary) -> float:
+	match step.kind:
+		&"die": return _fx.die_step_s
+		&"stamp": return _fx.stamp_s
+		&"combo", &"gem": return _fx.combo_step_s
+		&"base": return _fx.combo_step_s * 0.5
+		&"charm": return _fx.charm_pulse_gap_s
+		&"heat": return _fx.heat_step_s
+	return 0.0
+
+
+func _apply(step: Dictionary, tier: int) -> void:
+	if not is_instance_valid(_hud):
+		return
+	match step.kind:
+		&"die":
+			var idx: int = step.idx
+			_tumbler.flash_die(idx, COLOR_FLASH, _fx.die_step_s * 1.6)
+			_tumbler.punch_die(idx, _fx.lock_punch_scale, _fx.lock_punch_s)
+			var r := _tumbler.die_rect(idx)
+			var at := r.get_center() if r.size != Vector2.ZERO else _hud.chips_anchor()
+			_hud.float_text("+%d" % int(step.chips), at, UiStyle.CREAM)
+		&"stamp":
+			_hud.stamp(step.text)
+			shake_requested.emit(_fx.shake_px_by_tier[tier], _fx.shake_s_by_tier[tier])
+			_hud.burst(_hud.stamp_center, _fx.sparks_by_tier[tier])
+		&"combo", &"gem", &"base":
+			_float_delta(step, "GEM" if step.kind == &"gem" else "")
+		&"charm":
+			charm_triggered.emit(int(step.slot))
+			_float_delta(step, "")
+		&"heat":
+			_hud.punch(_hud.heat_label, 1.5, 0.3)
+			_hud.float_text("×%.2f" % _heat, _hud.heat_anchor(), ScoreHud.HEAT_COLOR, 56)
+	_chips += int(step.chips)
+	_mult += float(step.mult)
+	_hud.set_chips(_chips)
+	_hud.set_mult(_mult)
+	if int(step.chips) != 0:
+		_hud.punch(_hud.chips_label)
+	if not is_zero_approx(float(step.mult)):
+		_hud.punch(_hud.mult_label)
+
+
+func _float_delta(step: Dictionary, suffix: String) -> void:
+	var c := int(step.chips)
+	var m := float(step.mult)
+	if c != 0:
+		var txt := ("+%d" % c if c > 0 else "%d" % c) + (" " + suffix if suffix != "" else "")
+		_hud.float_text(txt, _hud.chips_anchor(), UiStyle.CREAM if c > 0 else COLOR_MINUS)
+	if not is_zero_approx(m):
+		var txt := ("+" if m > 0.0 else "") + ScoreHud.fmt_mult(m)
+		_hud.float_text(txt, _hud.mult_anchor(), UiStyle.AMBER if m > 0.0 else COLOR_MINUS)
+
+
+func _land() -> void:
+	if is_instance_valid(_result_label):
+		_hud.punch(_result_label, 1.4, 0.3)
+
+
+func _target_hit() -> void:
+	target_hit.emit()
+	if not is_instance_valid(_hud):
+		return
+	var tier := clampi(_fx.target_hit_tier, 0, _fx.shake_px_by_tier.size() - 1)
+	_hud.stamp("TARGET HIT!")
+	_hud.burst(_hud.stamp_center, _fx.sparks_by_tier[tier])
+	_hud.punch(_hud.target_fill, 1.0, 0.1)
+	shake_requested.emit(_fx.shake_px_by_tier[tier], _fx.shake_s_by_tier[tier])
+
+
+func _finish() -> void:
+	if _done:
+		return
+	_done = true
+	if is_instance_valid(_hud):
+		_hud.clear_stamp()
 	finished.emit()
 
 
@@ -107,3 +224,5 @@ func _tick_score(value: float) -> void:
 func _tick_total(value: float) -> void:
 	if is_instance_valid(_total_label):
 		_total_label.text = "Total: %d / %d" % [roundi(value), _target]
+	if is_instance_valid(_hud) and _target > 0:
+		_hud.set_target_fraction(value / float(_target))

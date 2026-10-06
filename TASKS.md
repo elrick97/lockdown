@@ -62,6 +62,7 @@
 ### Feel & presentation
 - [~] First juice pass: score tick-up audio w/ rising pitch, lock haptics, combo screen shake `add-juice-pass` *(haptics + shake done; rising-pitch tick-up audio still open: needs audio assets, players are stubbed)*
 - [x] Number cascade animation on scoring `add-score-cascade`
+- [x] Balatro-style score feedback: Chips × Mult × Heat build-up, tiered stamp/shake/sparks, target bar, lock punch, timer urgency, live Heat `add-score-feedback` *(owner direction 2026-10-06)*
 - [x] Art direction exploration: 3 style frames, pick one `add-art-direction` *(picked B "Smoke Room", logged in PRD §5)*
 - [x] UI layout pass: thumb-zone audit `add-smoke-room-ui` *(audited locally per owner rule: every control ≥ 48 dp in the thumb zone, tested)*
 - [x] Placeholder → first-pass dice/charm art for slice content `add-smoke-room-dice` `add-smoke-room-table` `add-smoke-room-ui-art` `add-charm-icons`

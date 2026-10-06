@@ -134,6 +134,17 @@ func is_shattered(index: int) -> bool:
 	return index >= 0 and index < _shattered.size() and _shattered[index]
 
 
+## Window times as if every unlocked die were locked right now (heat spec: live
+## Heat readout). Read-only; matches what _end_window_all_locked would record.
+func projected_window_remaining() -> Array[float]:
+	var out: Array[float] = _window_remaining.duplicate()
+	if state == State.LOCK_WINDOW:
+		out[window_index - 1] = time_remaining()
+		for w in range(window_index + 1, WINDOW_COUNT + 1):
+			out[w - 1] = _config.lock_window_duration_s
+	return out
+
+
 func time_remaining() -> float:
 	if state == State.LOCK_WINDOW:
 		return maxf(0.0, _config.lock_window_duration_s - _accumulated)

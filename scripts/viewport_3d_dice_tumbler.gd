@@ -219,6 +219,15 @@ func flash_die(index: int, color: Color, duration: float) -> void:
 	t.tween_property(_mats[index], "albedo_color", _resting_tint(index), duration * 0.5)
 
 
+func punch_die(index: int, amount: float, duration: float) -> void:
+	if index < 0 or index >= _dice_nodes.size():
+		return
+	var node := _dice_nodes[index]
+	var t := create_tween()
+	t.tween_property(node, "scale", Vector3.ONE * amount, duration * 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.tween_property(node, "scale", Vector3.ONE, duration * 0.65).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
 ## Bounds of the die's projected mesh in global canvas coordinates (dice-tumble spec).
 func die_rect(index: int) -> Rect2:
 	if _camera == null or index < 0 or index >= _dice_nodes.size() or _subviewport.size == Vector2i.ZERO:
