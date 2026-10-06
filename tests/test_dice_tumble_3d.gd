@@ -79,3 +79,28 @@ func test_full_tray_tap_rects_meet_minimum_and_do_not_overlap() -> void:
 	for i in 8:
 		for j in range(i + 1, 8):
 			assert_false(rects[i].intersects(rects[j]), "dice %d and %d don't overlap" % [i, j])
+
+
+# --- add-lock-signifiers ---
+
+func test_locked_die_seats_in_its_socket_with_a_padlock() -> void:
+	var t := _tumbler_in_tray([&"standard", &"standard", &"standard"] as Array[StringName])
+	t.reveal(_faces(3), _unlocked(3))
+	var y0: float = t._dice_nodes[1].position.y
+	t.lock_die(1, 2)
+	assert_true(t.is_lock_seated(1), "socket and padlock shown")
+	assert_almost_eq(t._dice_nodes[1].position.y, y0 + Viewport3DDiceTumbler.LOCK_LIFT, 0.001, "die lifts")
+	assert_false(t.is_lock_seated(0), "unlocked die has no socket")
+	assert_eq(t._mats[0].albedo_color, Viewport3DDiceTumbler.UNLOCKED_DIM, "unlocked dice dim while one is locked")
+	assert_eq(t._mats[1].albedo_color, Color.WHITE, "the locked die stays bright")
+
+
+func test_dead_die_is_cracked_dark_and_unseated() -> void:
+	var t := _tumbler_in_tray([&"glass", &"standard"] as Array[StringName])
+	t.reveal(_faces(2), _unlocked(2))
+	t.mark_dead(0)
+	assert_eq(t._mats[0].albedo_color, Viewport3DDiceTumbler.DEAD_TINT)
+	assert_not_null(t._mats[0].next_pass, "crack overlay")
+	assert_eq((t._mats[0].next_pass as StandardMaterial3D).albedo_texture.resource_path, "res://assets/dice/crack.png")
+	assert_false(t.is_lock_seated(0), "dead dice never show a socket")
+	assert_eq(t._mats[1].albedo_color, Color.WHITE, "no dimming when nothing is locked")

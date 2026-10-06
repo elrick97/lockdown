@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dlvep5u82x117"
-path="res://.godot/imported/lock_ring.png-79538db454bfbf263349355aff16addd.ctex"
+uid="uid://xr2ch183iych"
+path="res://.godot/imported/lock_socket.png-c691af4951e1255efeb5735c613955e4.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/dice/lock_ring.png"
-dest_files=["res://.godot/imported/lock_ring.png-79538db454bfbf263349355aff16addd.ctex"]
+source_file="res://assets/dice/lock_socket.png"
+dest_files=["res://.godot/imported/lock_socket.png-c691af4951e1255efeb5735c613955e4.ctex"]
 
 [params]
 

@@ -86,6 +86,8 @@ def check_png(path: Path) -> list[str]:
 def dice_budget(name: str) -> tuple[int, int]:
     """Production dice: material atlas 768x512, carve tile 256x256, sprite 128x128."""
     parts = name.removesuffix(".png").split("_")
+    if name in ("lock_socket.png", "crack.png"):  # add-lock-signifiers
+        return (256, 256)
     if parts[0] in DICE_MATERIALS:
         return (768, 512) if len(parts) == 2 else (256, 256)
     return (128, 128)

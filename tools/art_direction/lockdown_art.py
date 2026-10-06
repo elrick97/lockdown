@@ -1548,7 +1548,7 @@ def export_production_dice():
             put(f"{kind}_{carve}_albedo", _tile_of(calb, 1))
             put(f"{kind}_{carve}_normal", _tile_of(cnrm, 1), True)
             put(f"{kind}_{carve}_orm", _tile_of(corm, 1), True)
-    put("lock_ring", _sprite_ring())
+    # Lock socket/padlock/crack come from export_lock_signifiers() (add-lock-signifiers).
     put("blob_shadow", _sprite_blob())
 
     # Mesh only: the game builds materials from DiceMaterial data (design D2).
@@ -2230,4 +2230,75 @@ def export_shop_icons(only=None):
         if not only or tid in only:
             _shop_trinket_icon(tid, pal)
             written.append(tid + ".png")
+    return written
+
+
+# ========================================================= lock signifiers (add-lock-signifiers)
+def export_lock_signifiers():
+    """Brass lock socket (floor decal under a locked die), padlock badge, and the crack
+    overlay for shattered dice, into res://assets/dice/."""
+    pal = DIRECTIONS[PROD_DIRECTION]["pal"]
+    written = []
+    # Socket: 256Â², a recessed brass rounded-square ring with a glowing amber inner lip,
+    # seen top-down (the tray camera tilts 18Â°, so it reads as a seat the die sits in).
+    cam = _ui_stage(256, 256)
+    brass = _ui_mat("Brass", pal["brass"], metal=0.95, rough=0.26, bump=0.1, bump_scale=120.0)
+    glow = _ui_mat("Glow", (1.0, 0.55, 0.12), rough=0.3, emit=((1.0, 0.36, 0.035), 1.0))
+    velvet = _ui_mat("Velvet", (0.05, 0.022, 0.025), rough=0.95, bump=0.2, bump_scale=300.0)
+    _ui_slab("Ring", 2.42, 2.42, 0.5, 0.12, 0.06, brass, hole=(2.02, 2.02, 0.36))
+    _ui_slab("Lip", 2.04, 2.04, 0.37, 0.03, 0.01, glow, z_top=-0.03, hole=(1.94, 1.94, 0.33))
+    _ui_slab("Seat", 1.96, 1.96, 0.34, 0.04, 0.0, velvet, z_top=-0.05)
+    path = os.path.join(PROD_DIR, "lock_socket.png")
+    render_to(path, (256, 256), cam, transparent=True)
+    written.append("lock_socket.png")
+    # Padlock: 128Â², brass body + shackle + dark keyhole, front view.
+    cam = _ui_stage(128, 128)
+    brass = _ui_mat("Brass", pal["brass"], metal=0.95, rough=0.24)
+    ink = _ui_mat("Ink", (0.03, 0.015, 0.01), rough=0.6)
+    _stroke("Shackle", _arc(0.0, 0.05, 0.27, 0.0, math.pi, 20), 0.11, 0.08, brass, 0.06)
+    _stroke("LegL", [(-0.27, 0.05), (-0.27, -0.05)], 0.11, 0.08, brass, 0.06)
+    _stroke("LegR", [(0.27, 0.05), (0.27, -0.05)], 0.11, 0.08, brass, 0.06)
+    _ui_slab("Body", 0.82, 0.62, 0.12, 0.14, 0.05, brass, z_top=0.12)
+    bpy.context.scene.objects["Body"].location = (0, -0.3, 0)
+    _disc("Key", 0.0, -0.24, 0.07, 0.02, ink, 0.14, 0.0)
+    _prism("Slot", [(-0.03, -0.26), (0.03, -0.26), (0.045, -0.44), (-0.045, -0.44)], 0.02, ink, 0.14, 0.0)
+    path = os.path.join(PROD_DIR, "padlock.png")
+    render_to(path, (128, 128), cam, transparent=True)
+    written.append("padlock.png")
+    # Crack: 256Â² RGBA overlay, jagged dark fractures with a pale chipped edge.
+    S = 256
+    rng = np.random.default_rng(31)
+    img = np.zeros((S, S, 4), np.float32)
+    yy, xx = np.mgrid[0:S, 0:S].astype(np.float32)
+
+    def line(p0, p1, w):
+        (x0, y0), (x1, y1) = p0, p1
+        dx, dy = x1 - x0, y1 - y0
+        ln2 = dx * dx + dy * dy + 1e-6
+        t = np.clip(((xx - x0) * dx + (yy - y0) * dy) / ln2, 0, 1)
+        d = np.hypot(xx - (x0 + t * dx), yy - (y0 + t * dy))
+        core = np.clip(w - d, 0, 1)
+        edge = np.clip(w + 1.6 - d, 0, 1) - core
+        img[..., :3] = img[..., :3] * (1 - core[..., None]) + np.array([0.04, 0.02, 0.02]) * core[..., None]
+        img[..., :3] += np.array([0.95, 0.9, 0.8]) * (edge * (1 - img[..., 3]))[..., None] * 0.6
+        img[..., 3] = np.maximum(img[..., 3], np.maximum(core, edge * 0.55))
+
+    def branch(p, ang, length, w, depth):
+        pts = [p]
+        for _ in range(int(length / 14)):
+            ang += rng.uniform(-0.6, 0.6)
+            x, y = pts[-1]
+            pts.append((x + 14 * math.cos(ang), y + 14 * math.sin(ang)))
+        for a, b in zip(pts, pts[1:]):
+            line(a, b, w)
+        if depth > 0:
+            for k in range(2):
+                q = pts[rng.integers(1, len(pts))]
+                branch(q, ang + rng.choice([-1, 1]) * rng.uniform(0.6, 1.2), length * 0.5, max(1.0, w * 0.6), depth - 1)
+
+    for k in range(6):
+        branch((128 + rng.uniform(-6, 6), 128 + rng.uniform(-6, 6)), 2 * math.pi * k / 6 + rng.uniform(-0.25, 0.25),
+               rng.uniform(80, 115), 3.4, 1)
+    save_image("crack", np.clip(img, 0, 1), os.path.join(PROD_DIR, "crack.png"))
+    written.append("crack.png")
     return written

@@ -9,12 +9,20 @@ const TILT_DEG := 18.0  # art-direction spec: camera_tilt_deg
 const SPACING := 1.6  # world units between die centres (die = 1 unit)
 const MARGIN := 1.0  # world units of air around the grid
 const SPIN_TURNS := 3.0
-const AMBER := Color("#FF9E29")  # art-direction spec: palette_accent
-const DEAD_TINT := Color(0.45, 0.45, 0.45)
+const DEAD_TINT := Color(0.38, 0.38, 0.38)
+## Lock signifiers (add-lock-signifiers): a locked die rises into a brass socket and
+## wears a padlock; while any die is locked the unlocked ones dim (figure/ground).
+const LOCK_LIFT := 0.12
+const UNLOCKED_DIM := Color(0.88, 0.88, 0.88)
+const SOCKET_SIZE := 1.6
+const PADLOCK_OFFSET := Vector3(0.46, 0.62, 0.46)  # front-right top corner, over the die
+const PADLOCK_PX := 0.0032  # world units per texel: 128 px ≈ 0.41 units
 const GLASS_GLOW := 0.35
 const KEY_LIGHT := Color("#FFDBA8")  # art-direction spec: lamp_pool key
 const DIE_SCENE := preload("res://assets/dice/die.glb")
-const RING_TEX := preload("res://assets/dice/lock_ring.png")
+const SOCKET_TEX := preload("res://assets/dice/lock_socket.png")
+const PADLOCK_TEX := preload("res://assets/dice/padlock.png")
+const CRACK_TEX := preload("res://assets/dice/crack.png")
 const BLOB_TEX := preload("res://assets/dice/blob_shadow.png")
 ## In-game face normals: Blender Z-up exported to glTF Y-up (design D4).
 const FACE_NORMAL := {
@@ -38,6 +46,9 @@ var _camera: Camera3D
 var _dice_nodes: Array[Node3D] = []
 var _mats: Array[ORMMaterial3D] = []
 var _rings: Array[MeshInstance3D] = []
+var _padlocks: Array[Sprite3D] = []
+var _ground: Array[Vector3] = []
+static var _crack_mat: StandardMaterial3D
 var _spin_axis: Array[Vector3] = []
 
 
@@ -78,6 +89,8 @@ func _create_visuals(p_count: int) -> void:
 	_dice_nodes.clear()
 	_mats.clear()
 	_rings.clear()
+	_padlocks.clear()
+	_ground.clear()
 	_spin_axis.clear()
 	if _die_mesh == null:
 		_die_mesh = _extract_mesh()
@@ -125,9 +138,22 @@ func _create_visuals(p_count: int) -> void:
 		var col := i % cols
 		var ground := Vector3((col - (cols - 1) / 2.0) * SPACING, 0.0, (row - (rows - 1) / 2.0) * SPACING)
 		_subviewport.add_child(_floor_quad(ground + Vector3(0, 0.001, 0), 1.5, BLOB_TEX, Color.WHITE, true))
-		var ring := _floor_quad(ground + Vector3(0, 0.002, 0), 1.45, RING_TEX, AMBER, false)
+		var ring := _floor_quad(ground + Vector3(0, 0.002, 0), SOCKET_SIZE, SOCKET_TEX, Color.WHITE, false)
 		_subviewport.add_child(ring)
 		_rings.append(ring)
+		var padlock := Sprite3D.new()
+		padlock.texture = PADLOCK_TEX
+		padlock.pixel_size = PADLOCK_PX
+		padlock.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		padlock.shaded = false
+		padlock.no_depth_test = true
+		padlock.render_priority = 1
+		padlock.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		padlock.position = ground + Vector3(0.0, 0.5 + LOCK_LIFT, 0.0) + PADLOCK_OFFSET
+		padlock.visible = false
+		_subviewport.add_child(padlock)
+		_padlocks.append(padlock)
+		_ground.append(ground)
 		var mat := _material_for(dice[i] if i < dice.size() else null)
 		var die := MeshInstance3D.new()
 		die.mesh = _die_mesh
@@ -202,13 +228,56 @@ func _render_tumbling(progress: float) -> void:
 func _render_face(index: int, face: int, is_locked: bool) -> void:
 	if index < 0 or index >= _dice_nodes.size():
 		return
+	var seated := is_locked and not dead[index]
 	_dice_nodes[index].basis = face_up_basis(face, slot_yaw(index))
-	_rings[index].visible = is_locked and not dead[index]
-	_mats[index].albedo_color = _resting_tint(index)
+	_dice_nodes[index].position.y = 0.5 + (LOCK_LIFT if seated else 0.0)
+	_rings[index].visible = seated
+	_padlocks[index].visible = seated
+	if dead[index] and _mats[index].next_pass == null:
+		_mats[index].next_pass = _crack_material()
+	_refresh_tints()
+
+
+## Every die's resting tint: dead dice dark and cracked; while any die is locked,
+## the unlocked ones dim so the locked set stands out.
+func _refresh_tints() -> void:
+	for i in _mats.size():
+		_mats[i].albedo_color = _resting_tint(i)
 
 
 func _resting_tint(index: int) -> Color:
-	return DEAD_TINT if dead[index] else Color.WHITE
+	if dead[index]:
+		return DEAD_TINT
+	if not locked[index] and _any_seated():
+		return UNLOCKED_DIM
+	return Color.WHITE
+
+
+func _any_seated() -> bool:
+	for i in locked.size():
+		if locked[i] and not dead[i]:
+			return true
+	return false
+
+
+func is_lock_seated(index: int) -> bool:
+	return index >= 0 and index < _padlocks.size() and _padlocks[index].visible and _rings[index].visible
+
+
+## Crack overlay for shattered Glass: triplanar so it wraps the die, drawn as a pass
+## over the die's own material.
+static func _crack_material() -> StandardMaterial3D:
+	if _crack_mat == null:
+		_crack_mat = StandardMaterial3D.new()
+		_crack_mat.albedo_texture = CRACK_TEX
+		_crack_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_crack_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_crack_mat.uv1_triplanar = true
+		_crack_mat.uv1_scale = Vector3(1.0, 1.0, 1.0)
+		_crack_mat.grow = true
+		_crack_mat.grow_amount = 0.004
+		_crack_mat.render_priority = 1
+	return _crack_mat
 
 
 func flash_die(index: int, color: Color, duration: float) -> void:

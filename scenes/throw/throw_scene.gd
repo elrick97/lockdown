@@ -446,6 +446,10 @@ func _on_reroll_started(_rerolled_indices: Array[int]) -> void:
 func _mark_dead_slots() -> void:
 	for i in _controller.faces.size():
 		if _controller.is_shattered(i):
+			if not _tumbler.dead[i]:  # newly shattered: say so once (add-lock-signifiers)
+				var r := _tumbler.die_rect(i)
+				if r.size != Vector2.ZERO:
+					_hud.float_text("SHATTERED", r.get_center(), UiStyle.CREAM, 30)
 			_tumbler.mark_dead(i)
 
 
