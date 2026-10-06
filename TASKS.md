@@ -40,7 +40,7 @@
 - [x] Internal: 20 self-runs — lock window 2.5 s feels right, Heat dilemma lands on mid-value boards
 - [x] Tune lock window duration — 2.5 s confirmed, no change needed
 - [x] **Heat-dilemma test:** lone pair in Window 1 causes genuine hesitation — hypothesis confirmed
-- [x] 7 external playtesters (friends, Cristina, colleagues), observed silently
+- [x] 7 external playtesters (friends and colleagues), observed silently
 - [x] **GATE REVIEW — PASSED** ✓ All 7 wanted to keep playing; asked if there are roguelike upgrades between antes and requested more satisfying score cascade animation. → Proceed to M1.
 
 ---

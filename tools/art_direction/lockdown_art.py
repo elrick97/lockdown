@@ -3,7 +3,8 @@
 Runs inside Blender 5.2 (bpy + numpy). Everything is generated from scratch:
 no library assets, no generated models. Usage from Blender's Python:
 
-    exec(open(r"<repo>/tools/art_direction/lockdown_art.py").read())
+    __file__ = r"<repo>/tools/art_direction/lockdown_art.py"
+    exec(open(__file__).read())
     build_frame("A")   # or "B", "C"
 
 Asset recipe follows design.md D1-D9: one shared die/tray/token/camera rig,
@@ -18,7 +19,12 @@ import bpy
 import numpy as np
 from mathutils import Euler, Matrix, Vector
 
-PROJECT = r"C:\Users\ricar\projects\lockdown"
+# Repo root without a hard-coded machine path. Blender runs this through exec(), so
+# the caller sets __file__ first (usage above), or LOCKDOWN_ROOT in the environment.
+try:
+    PROJECT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+except NameError:
+    PROJECT = os.environ["LOCKDOWN_ROOT"]
 OUT = os.path.join(PROJECT, "assets", "art_direction")
 TILE = 256
 ATLAS_COLS, ATLAS_ROWS = 3, 2
