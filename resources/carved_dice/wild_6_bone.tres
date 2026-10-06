@@ -5,7 +5,7 @@
 
 [resource]
 script = ExtResource("1_carve")
-display_name = "Wild 6 (Bone)"
+display_name = "Bone die · Wild on 6"
 description = "Adds a die whose 6 counts as any face for combos."
 cost = 6
 material_id = &"standard"

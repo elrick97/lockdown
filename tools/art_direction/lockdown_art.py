@@ -2105,6 +2105,7 @@ SHOP_DIR = os.path.join(PROJECT, "assets", "shop")
 SHOP_PX = 256
 # Die offers: id -> (material kind, carved face or None, carve type or None).
 SHOP_DICE = {
+    "bone": ("bone", None, None),  # YOUR DICE row (add-shop-clarity); never sold
     "iron": ("iron", None, None),
     "glass": ("glass", None, None),
     "wild_6_bone": ("bone", 6, "wild"),

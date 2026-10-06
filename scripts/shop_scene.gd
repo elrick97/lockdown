@@ -49,6 +49,9 @@ var _dice_caption: Label
 var _dice_label: Label
 var _inspect: InspectCard
 var _next_label: Label
+## YOUR DICE as icons with ×count badges (add-shop-clarity).
+var _dice_row: HBoxContainer
+const BLOCKED_RED := Color(0.85, 0.42, 0.36)
 ## Inspect card bottom edges (canvas units): in the gap under your build / above the offers.
 const INSPECT_BUILD_Y := 990.0
 const INSPECT_OFFER_Y := 1090.0
@@ -123,7 +126,7 @@ func _apply_layout() -> void:
 		_set_rect(_build_caption, 0.0, 0.0, 1.0, 0.0, 60.0, 232.0, -60.0, 272.0)
 		_set_rect(_owned_label, 0.0, 0.0, 1.0, 0.0, 60.0, 450.0, -60.0, 540.0)
 		_set_rect(_dice_caption, 0.0, 0.0, 1.0, 0.0, 60.0, 600.0, -60.0, 640.0)
-		_set_rect(_dice_label, 0.0, 0.0, 1.0, 0.0, 60.0, 645.0, -60.0, 780.0)
+		_set_rect(_dice_label, 0.0, 0.0, 1.0, 0.0, 60.0, 752.0, -60.0, 810.0)
 	if _next_label != null:
 		_set_rect(_next_label, 0.0, 0.0, 1.0, 0.0, 60.0, 830.0, -60.0, 960.0)
 	_set_rect(_status_label, 0.0, 0.0, 1.0, 0.0, 40.0, 990.0, -40.0, 1090.0)
@@ -230,6 +233,9 @@ func _build_offer_card(index: int, offer: ShopOffer, description: String,
 	var name_label := Label.new()
 	name_label.text = "%s  ·  %s" % [offer.label, "%dg" % offer.cost if offer.cost > 0 else "FREE"]
 	text.add_child(name_label)
+	card.set_meta(&"name_label", name_label)
+	if icon != null:
+		card.set_meta(&"badge", row.get_child(0))
 	var body := Label.new()
 	body.theme_type_variation = &"CardBody"
 	body.text = description
@@ -239,9 +245,15 @@ func _build_offer_card(index: int, offer: ShopOffer, description: String,
 	var buy_btn := Button.new()
 	buy_btn.text = "BUY"
 	buy_btn.custom_minimum_size = Vector2(220.0, 130.0)
+	buy_btn.clip_text = true  # "NEED 3g" / "SLOTS FULL" never widen the button
 	buy_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var captured_index := index
 	buy_btn.pressed.connect(func() -> void: _on_buy_pressed(captured_index))
+	# A disabled BUY still answers a tap: it says why (add-shop-clarity).
+	buy_btn.gui_input.connect(func(e: InputEvent) -> void:
+		var mb := e as InputEventMouseButton
+		if mb != null and not mb.pressed and buy_btn.disabled:
+			_on_blocked_tap(captured_index))
 	row.add_child(buy_btn)
 	_buy_buttons.append(buy_btn)
 	return card
@@ -271,9 +283,14 @@ func _on_buy_pressed(index: int) -> void:
 		RunCoordinator.bag.add_carved(carved.material_id, carved.carved_face, carved.carve_type)
 	offer.sold = true
 	_status_label.text = "Bought: %s" % offer.label
-	_update_gold_label()
+	var card := _buy_buttons[index].get_parent().get_parent() as Control
+	var from: Rect2 = (card.get_meta(&"badge") as Control).get_global_rect() if card.has_meta(&"badge") else Rect2()
+	var gold_before := _ledger.gold + offer.cost
 	_update_owned_label()
 	_update_button_states()
+	_tick_gold(gold_before, _ledger.gold)
+	if from.size != Vector2.ZERO:
+		_fly_in(card.get_meta(&"badge").texture, from, _landing_for(charm, mat, carved))
 
 
 func _on_reroll_pressed() -> void:
@@ -315,6 +332,126 @@ func _update_gold_label() -> void:
 	_gold_label.text = "Gold: %d" % _ledger.gold
 
 
+## Why an offer can't be bought right now ("" = it can): the BUY label (shop-scene spec).
+func buy_block_reason(i: int) -> String:
+	var offer := _offers[i]
+	if offer.sold:
+		return "SOLD"
+	var is_charm := i < _offer_charms.size() and _offer_charms[i] != null
+	var is_trinket := i < _offer_trinkets.size() and _offer_trinkets[i] != null
+	if (is_charm and RunCoordinator.inventory.is_full()) or (is_trinket and RunCoordinator.trinket_inventory.is_full()):
+		return "SLOTS FULL"
+	if not _ledger.can_afford(offer.cost):
+		return "NEED %dg" % (offer.cost - _ledger.gold)
+	return ""
+
+
+func _on_blocked_tap(i: int) -> void:
+	var reason := buy_block_reason(i)
+	if reason == "" or reason == "SOLD":
+		return
+	var btn := _buy_buttons[i]
+	var home := btn.position.x
+	var t := create_tween()
+	for dx: float in [14.0, -11.0, 7.0, -4.0, 0.0]:
+		t.tween_property(btn, "position:x", home + dx, 0.04)
+	if reason == "SLOTS FULL":
+		_status_label.text = "Slots full: %d / %d" % [CharmInventory.MAX_SLOTS, CharmInventory.MAX_SLOTS] \
+			if i < _offer_charms.size() and _offer_charms[i] != null else "Trinket slots full"
+	else:
+		_status_label.text = "Need %d more gold" % (_offers[i].cost - _ledger.gold)
+		_punch(_gold_label, 1.2)
+
+
+func _punch(c: Control, amount: float) -> void:
+	c.pivot_offset = c.size / 2.0
+	var t := create_tween()
+	t.tween_property(c, "scale", Vector2.ONE * amount, 0.08)
+	t.tween_property(c, "scale", Vector2.ONE, 0.18)
+
+
+func _tick_gold(from: int, to: int) -> void:
+	var t := create_tween()
+	t.tween_method(func(v: float) -> void: _gold_label.text = "Gold: %d" % roundi(v), float(from), float(to), 0.35)
+	_punch(_gold_label, 1.12)
+
+
+## Where a purchase lands: its charm socket, its die in YOUR DICE, else the gold plaque.
+func _landing_for(charm: CharmEffect, mat: DiceMaterial, carved: CarvedDieOffer) -> Control:
+	if charm != null and _owned_icons != null:
+		var idx := RunCoordinator.inventory.iter_charms().find(charm)
+		if idx >= 0 and idx < _owned_icons.get_child_count():
+			return _owned_icons.get_child(idx)
+	if (mat != null or carved != null) and _dice_row != null:
+		for c in _dice_row.get_children():
+			var g: Dictionary = c.get_meta(&"group", {})
+			if carved != null and g.get("carve_type") == carved.carve_type and g.get("carved_face") == carved.carved_face:
+				return c
+			if mat != null and g.get("carve_type") == &"" and g.get("material_id") == mat.material_id:
+				return c
+	return _gold_label
+
+
+## The bought icon flies from its card to where it lands, then pops with sparks.
+func _fly_in(tex: Texture2D, from: Rect2, target: Control) -> void:
+	var fly := UiStyle.charm_badge(tex, from.size.x)
+	fly.top_level = true
+	fly.z_index = 20
+	add_child(fly)
+	fly.global_position = from.position
+	fly.size = from.size
+	var to := target.get_global_rect().get_center() - from.size / 2.0
+	var t := create_tween()
+	t.tween_property(fly, "global_position", to, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	t.parallel().tween_property(fly, "scale", Vector2.ONE * 0.8, 0.45)
+	t.tween_callback(func() -> void:
+		fly.queue_free()
+		_punch(target, 1.25)
+		ScoreHud.spawn_burst(self, target.get_global_rect().get_center(), 16))
+
+
+## YOUR DICE as a row of die icons with ×count badges; tap one to inspect it.
+func _rebuild_dice_row() -> void:
+	if _dice_row != null:
+		_dice_row.queue_free()
+	_dice_row = HBoxContainer.new()
+	_dice_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_dice_row.add_theme_constant_override("separation", 18)
+	_dice_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_dice_row)
+	_set_rect(_dice_row, 0.0, 0.0, 1.0, 0.0, 40.0, 646.0, -40.0, 750.0)
+	for g in RunCoordinator.bag.groups():
+		var res := _resource_for_group(g)
+		var cell := Control.new()
+		cell.custom_minimum_size = Vector2(104.0, 104.0)
+		cell.set_meta(&"group", g)
+		var icon := UiStyle.charm_badge(res.get("icon") if res != null else null, 104.0)
+		cell.add_child(icon)
+		icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		var count := Label.new()
+		count.text = "×%d" % g.count
+		count.add_theme_font_size_override("font_size", 30)
+		count.add_theme_color_override("font_color", UiStyle.CREAM)
+		count.add_theme_color_override("font_outline_color", UiStyle.OUTLINE)
+		count.add_theme_constant_override("outline_size", 8)
+		count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cell.add_child(count)
+		count.position = Vector2(62.0, 62.0)
+		if res != null:
+			UiStyle.pickable(cell, func() -> void: _inspect.show_item(res, INSPECT_BUILD_Y))
+		_dice_row.add_child(cell)
+
+
+func _resource_for_group(g: Dictionary) -> Resource:
+	if g.carve_type != &"":
+		for path in _CARVED_DIE_PATHS:
+			var c := load(path) as CarvedDieOffer
+			if c != null and c.carve_type == g.carve_type and c.carved_face == g.carved_face and c.material_id == g.material_id:
+				return c
+		return null
+	return DiceMaterial.by_id(g.material_id)
+
+
 ## "Charms 2 / 5: Quick Draw, Loaded" (ui-theme spec), so slot limits are visible.
 func _update_owned_label() -> void:
 	var names: Array[String] = []
@@ -330,6 +467,7 @@ func _update_owned_label() -> void:
 	add_child(_owned_icons)
 	_set_rect(_owned_icons, 0.0, 0.0, 1.0, 0.0, 40.0, 282.0, -40.0, 442.0)
 	_dice_label.text = RunCoordinator.bag.summary()
+	_rebuild_dice_row()
 
 
 func _update_button_states() -> void:
@@ -345,3 +483,12 @@ func _update_button_states() -> void:
 		var blocked_by_inv := (is_charm and inv_full) or (is_trinket and trinket_inv_full)
 		buy_btn.disabled = offer.sold or blocked_by_inv or not _ledger.can_afford(offer.cost)
 		card.modulate = Color(0.45, 0.45, 0.45) if offer.sold else Color.WHITE
+		var reason := buy_block_reason(i)
+		buy_btn.text = "BUY" if reason == "" else reason
+		buy_btn.add_theme_font_size_override("font_size", 44 if reason == "" else 30)
+		if card.has_meta(&"name_label"):
+			var nl := card.get_meta(&"name_label") as Label
+			if reason.begins_with("NEED"):
+				nl.add_theme_color_override("font_color", BLOCKED_RED)
+			else:
+				nl.remove_theme_color_override("font_color")

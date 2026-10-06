@@ -5,7 +5,7 @@
 
 [resource]
 script = ExtResource("1_carve")
-display_name = "Gem 5 (Bone)"
+display_name = "Bone die · Gem on 5"
 description = "Adds a die whose 5 gives +20 Chips when locked."
 cost = 4
 material_id = &"standard"

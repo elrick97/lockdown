@@ -5,7 +5,7 @@
 
 [resource]
 script = ExtResource("1_carve")
-display_name = "Spark 4 (Bone)"
+display_name = "Bone die · Spark on 4"
 description = "Adds a die whose 4 extends the current lock window by 0.5 s when locked."
 cost = 5
 material_id = &"standard"

@@ -22,7 +22,7 @@ UI_PX = {f"button_{k}_{s}.png": (256, 128) for k in ("primary", "secondary")
 CHARMS = Path(__file__).resolve().parents[2] / "assets" / "charms"  # add-charm-icons
 CHARM_COUNT = 12
 SHOP = Path(__file__).resolve().parents[2] / "assets" / "shop"  # add-shop-icons
-SHOP_ICONS = ("iron", "glass", "wild_6_bone", "gem_5_bone", "spark_4_bone", "re_tumble", "freeze_timer")
+SHOP_ICONS = ("bone", "iron", "glass", "wild_6_bone", "gem_5_bone", "spark_4_bone", "re_tumble", "freeze_timer")
 UI_PX.update({"panel.png": (256, 256), "plaque.png": (256, 96), "socket.png": (160, 160),
               "timer_frame.png": (512, 56), "timer_fill.png": (64, 32),
               "start_hero.png": (768, 640),  # add-start-hero-art
