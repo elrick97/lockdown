@@ -1,5 +1,5 @@
 extends Control
-## Gray-box presentation for the throw loop. All gameplay decisions live in
+## Presentation for the throw loop (Smoke Room UI, ui-theme spec). All gameplay decisions live in
 ## ThrowController; this scene renders state, resolves taps to die indices
 ## (geometry never reaches the controller), and handles focus-loss pause.
 
@@ -8,6 +8,7 @@ signal ante_cleared(throws_left: int)
 const TIMER_BAR_FULL_WIDTH := 1000.0
 const MAX_COUNTDOWN_STEP_S := 0.1
 const START_SCENE := "res://scenes/start/start_scene.tscn"
+const CHARM_SLOTS := 5
 
 var _config: ThrowConfig = preload("res://resources/throw_config.tres")
 var _scoring_config: ScoringConfig = preload("res://resources/scoring_config.tres")
@@ -31,6 +32,10 @@ var _end_title: Label
 var _end_summary: Label
 var _new_run_button: Button
 var _menu_button: Button
+var _hud_panel: Panel
+var _timer_track: ColorRect
+var _charm_row: HBoxContainer
+var _charm_slots: Array[Button] = []
 
 @onready var _tray: Control = $Tray
 @onready var _timer_bar: ColorRect = $TimerBar
@@ -45,6 +50,23 @@ var _menu_button: Button
 
 
 func _ready() -> void:
+	theme = UiStyle.theme()
+	_hud_panel = Panel.new()
+	_hud_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_hud_panel)
+	move_child(_hud_panel, 0)
+	_timer_track = ColorRect.new()
+	_timer_track.color = Color(0.1, 0.06, 0.05)
+	_timer_track.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_timer_track)
+	move_child(_timer_track, _timer_bar.get_index())
+	_timer_bar.color = UiStyle.AMBER
+	_total_label.theme_type_variation = &"HudValue"
+	_result.theme_type_variation = &"HudValue"
+	_throw_button.theme_type_variation = &"ThrowButton"
+	_charm_row = HBoxContainer.new()
+	_charm_row.add_theme_constant_override("separation", 20)
+	add_child(_charm_row)
 	_skip_button = Button.new()
 	_skip_button.text = "SKIP RISK (+3g)"
 	_skip_button.add_theme_font_size_override("font_size", 40)
@@ -82,9 +104,10 @@ func _ready() -> void:
 
 	_tumbler = Viewport3DDiceTumbler.new()
 	_tray.add_child(_tumbler)
+	_build_charm_row()
 
 	_update_round_labels()
-	_status.text = "Seed %d — press THROW" % RngService.run_seed
+	_status.text = "Tap THROW to roll the dice"
 
 
 ## Establish the UI layout in code. The hand-authored .tscn loses all Control
@@ -93,19 +116,27 @@ func _ready() -> void:
 ## the layout at runtime where it is guaranteed to apply on every platform.
 func _apply_layout() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_set_rect(_ante_label, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 110.0)
-	_set_rect(_throw_label, 0.0, 0.0, 0.5, 0.0, 0.0, 115.0, 0.0, 200.0)
-	_set_rect(_total_label, 0.5, 0.0, 1.0, 0.0, 0.0, 115.0, 0.0, 200.0)
-	_set_rect(_status, 0.0, 0.0, 1.0, 0.0, 0.0, 210.0, 0.0, 330.0)
-	_set_rect(_result, 0.0, 0.0, 1.0, 0.0, 40.0, 340.0, -40.0, 590.0)
-	_set_rect(_timer_bar, 0.0, 0.0, 0.0, 0.0, 40.0, 600.0, 1040.0, 635.0)
-	_set_rect(_tray, 0.0, 0.25, 1.0, 0.75, 0.0, 0.0, 0.0, 0.0)
-	_set_rect(_throw_button, 0.5, 1.0, 0.5, 1.0, -220.0, -300.0, 220.0, -120.0)
+	# Bands at 1080×2400 (ui-theme spec, design D2).
+	if _hud_panel != null:
+		_set_rect(_hud_panel, 0.0, 0.0, 1.0, 0.0, 24.0, 20.0, -24.0, 250.0)
+	_set_rect(_ante_label, 0.0, 0.0, 1.0, 0.0, 40.0, 34.0, -40.0, 124.0)
+	_set_rect(_throw_label, 0.0, 0.0, 0.5, 0.0, 40.0, 134.0, 0.0, 234.0)
+	_set_rect(_total_label, 0.5, 0.0, 1.0, 0.0, 0.0, 134.0, -40.0, 234.0)
+	_set_rect(_status, 0.0, 0.0, 1.0, 0.0, 40.0, 270.0, -40.0, 360.0)
+	_set_rect(_result, 0.0, 0.0, 1.0, 0.0, 40.0, 370.0, -40.0, 600.0)
+	if _timer_track != null:
+		_set_rect(_timer_track, 0.0, 0.0, 0.0, 0.0, 40.0, 615.0, 1040.0, 650.0)
+	_set_rect(_timer_bar, 0.0, 0.0, 0.0, 0.0, 40.0, 615.0, 1040.0, 650.0)
+	_set_rect(_tray, 0.0, 0.27, 1.0, 0.66, 0.0, 0.0, 0.0, 0.0)
+	if _charm_row != null:
+		_set_rect(_charm_row, 0.0, 0.0, 1.0, 0.0, 40.0, 1610.0, -40.0, 1770.0)
+	_set_rect(_throw_button, 0.5, 1.0, 0.5, 1.0, -260.0, -300.0, 260.0, -120.0)
+	# SKIP (before the first throw on a Risk ante) and trinkets (during lock windows)
+	# never show together, so they share the row above THROW.
 	if _skip_button != null:
-		# Own row directly above THROW: in thumb reach, never overlapping it.
-		_set_rect(_skip_button, 0.5, 1.0, 0.5, 1.0, -220.0, -440.0, 220.0, -320.0)
+		_set_rect(_skip_button, 0.5, 0.0, 0.5, 0.0, -260.0, 1800.0, 260.0, 1930.0)
 	if _trinket_row != null:
-		_set_rect(_trinket_row, 0.0, 0.0, 1.0, 0.0, 40.0, 645.0, -40.0, 780.0)
+		_set_rect(_trinket_row, 0.0, 0.0, 1.0, 0.0, 40.0, 1800.0, -40.0, 1930.0)
 	if _end_panel != null:
 		_end_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		_set_rect(_end_title, 0.0, 0.0, 1.0, 0.0, 40.0, 620.0, -40.0, 760.0)
@@ -216,6 +247,7 @@ func _rebuild_trinket_buttons() -> void:
 		var btn := Button.new()
 		btn.text = t.display_name
 		btn.add_theme_font_size_override("font_size", 36)
+		btn.custom_minimum_size.y = 130.0  # ui-theme spec: ≥ 48 dp
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_trinket_row.add_child(btn)
 		var idx := i
@@ -389,11 +421,35 @@ func _end_button(text: String) -> Button:
 	return b
 
 
+## Owned charms (ui-theme spec): names in slot order; tapping one shows its effect.
+func _build_charm_row() -> void:
+	for child in _charm_row.get_children():
+		child.queue_free()
+	_charm_slots.clear()
+	var charms := RunCoordinator.inventory.iter_charms()
+	for i in CHARM_SLOTS:
+		var slot := Button.new()
+		slot.theme_type_variation = &"SlotButton"
+		slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		slot.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		slot.clip_text = true
+		if i < charms.size():
+			var charm: CharmEffect = charms[i]
+			slot.text = charm.display_name
+			slot.pressed.connect(func() -> void:
+				_status.text = "%s: %s" % [charm.display_name, charm.description])
+		else:
+			slot.text = "·"
+			slot.disabled = true
+		_charm_row.add_child(slot)
+		_charm_slots.append(slot)
+
+
 func _show_end_panel(won: bool) -> void:
 	_end_title.text = "RUN WON" if won else "GAME OVER"
-	_end_summary.text = "Ante %d / %d\nBest throw  %d\nFinal total  %d / %d" % [
+	_end_summary.text = "Ante %d / %d\nBest throw  %d\nFinal total  %d / %d\n\nSeed %d" % [
 		_arc.current_ante, _ante_config.targets.size(), RunCoordinator.best_throw,
-		_round.total, _round.target]
+		_round.total, _round.target, RngService.run_seed]
 	_skip_button.visible = false
 	_end_panel.visible = true
 

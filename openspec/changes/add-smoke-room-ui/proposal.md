@@ -17,15 +17,11 @@ Every screen still uses Godot's default controls: flat gray buttons, plain label
   All buttons sit in the bottom 40% and are ≥ 48 dp (126 px).
 - **Shop cards:** each offer is a panel with name, the full effect description, cost and BUY. Owned charms are listed at the top, so slot limits are visible. Gold sits in the HUD style.
 - **Score readout restyled** (cascade unchanged: same timings and spec).
-- **Font: decision for you** (below). Until then the engine's built-in font is styled by the theme.
+- **Font:** owner chose the engine's built-in font (2026-10-06), styled by the theme. No new font until the name decision.
 
-## Decision for you: font
+## Decision: font
 
-The style frames used no text. Options:
-1. **Keep Godot's built-in font** (ships with the engine; no new license), styled by size and color. Zero risk; looks generic.
-2. **Add one open-license display font for headings** (e.g. a condensed sans like *Oswald* or *Bebas Neue*, both SIL Open Font License 1.1), keeping the built-in font for body text. OFL allows bundling in a commercial game with the license file shipped alongside. Per CLAUDE.md I won't add any font until you approve a specific one.
-
-Recommendation: 1 now, then 2 when the name decision (PRD Q4) sets the brand voice.
+Owner chose option 1 (2026-10-06): keep Godot's built-in font, styled by the theme. An open-license display font can be proposed once the name decision (PRD Q4) sets the brand voice.
 
 ## Capabilities
 
@@ -33,8 +29,7 @@ Recommendation: 1 now, then 2 when the name decision (PRD Q4) sets the brand voi
 - `ui-theme`: Smoke Room theme tokens, button/panel states, the throw-screen bands, thumb-zone and tap-size rules, shop card content, the owned-build display.
 
 ### Modified Capabilities
-- `shop-scene`: offers show their effect description; owned charms are listed.
-- `throw-loop`: trinket buttons move into the bottom band (behavior unchanged).
+- None at requirement level. Shop and throw-loop behavior is unchanged; their presentation rules (cards with descriptions, owned build, trinket placement) are specified in `ui-theme`.
 
 ## Impact
 

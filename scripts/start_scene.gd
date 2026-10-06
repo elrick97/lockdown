@@ -4,8 +4,8 @@ extends Control
 ## scene anchors don't survive the Android export (see project notes).
 
 const THROW_SCENE := "res://scenes/throw/throw_scene.tscn"
-const BRASS := Color("#CC994C")
-const AMBER := Color("#FF9E29")  # art-direction spec: palette_accent
+const BRASS := UiStyle.BRASS
+const AMBER := UiStyle.AMBER
 const BACKGROUND := Color("#1C110A")  # art-direction spec: palette_backdrop
 const HOW_TO := [
 	"Throw, then tap dice to lock them.",
@@ -20,6 +20,7 @@ var _play_button: Button
 
 
 func _ready() -> void:
+	theme = UiStyle.theme()
 	var bg := ColorRect.new()
 	bg.color = BACKGROUND
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -41,7 +42,7 @@ func _ready() -> void:
 
 	_play_button = Button.new()
 	_play_button.text = "PLAY"
-	_play_button.add_theme_font_size_override("font_size", 64)
+	_play_button.theme_type_variation = &"ThrowButton"
 	_play_button.pressed.connect(_on_play_pressed)
 	add_child(_play_button)
 
