@@ -1,7 +1,7 @@
 # score-cascade Specification
 
 ## Purpose
-Animated score reveal sequence played after every throw resolution. Provides the "jackpot payoff" feedback loop: locked dice flash gold, combo label pops in, throw score ticks up, round total ticks up. Implemented in `ScoreCascade` (RefCounted); the scene drives it via signal.
+Animated score reveal played after every throw resolution: the "jackpot payoff" loop. The breakdown builds up step by step on CHIPS × MULT × HEAT plaques (per-die pips, stamped combo with tiered shake and sparks, charm pulses, Heat), then the throw score ticks into the round total and target bar. Implemented in `ScoreCascade` (RefCounted, pure step list) and `ScoreHud`; tunables in `FeedbackConfig`.
 ## Requirements
 ### Requirement: Cascade plays after every throw resolution
 After `ThrowController` emits `resolved`, the system SHALL play the score cascade before re-enabling THROW. The breakdown plays out on the **CHIPS**, **MULT** and **HEAT** plaques above the table as a sequence of steps built from the `ScoreBreakdown` (`ScoreCascade.build_steps`):
