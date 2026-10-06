@@ -36,6 +36,7 @@ func _run() -> void:
 	await _scenario_boss()
 	await _scenario_risk_skip()
 	await _scenario_juice()
+	await _scenario_charm_icons()
 	await _scenario_run_flow()
 	_report.append("\n%d check(s) failed" % _failures)
 	var f := FileAccess.open(OUT_DIR + "report.md", FileAccess.WRITE)
@@ -308,6 +309,44 @@ func _scenario_juice() -> void:
 		_check(max_offset > 2.0, "Combo landed (%s) → screen shook (max offset %.1f px)" % [b.describe(), max_offset])
 	_check(scene.position == Vector2.ZERO, "Shake settles back to the origin")
 	await _screenshot("juice_after_shake")
+
+
+func _scenario_charm_icons() -> void:
+	_section("add-charm-icons")
+	var scene := await _load_run(1, Callable())
+	for id in ["hair_trigger", "loaded", "collector"]:
+		_rc.inventory.add_charm(load("res://resources/charms/%s.tres" % id))
+	scene._build_charm_row()
+	await process_frame
+	_check(scene._charm_slots[0].icon != null and scene._charm_slots[2].icon != null,
+		"Owned charms show their medallions in the slots")
+	_press(scene._throw_button)
+	await _wait(func() -> bool: return scene._controller.state == ThrowController.State.LOCK_WINDOW)
+	await _lock_all(scene)
+	await _wait(func() -> bool: return scene._controller.state == ThrowController.State.RESOLVED)
+	var max_scale := [0.0, 0.0, 0.0]
+	var shot_taken := false
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < 2500:
+		for i in 3:
+			max_scale[i] = maxf(max_scale[i], scene._charm_slots[i].scale.x)
+		if not shot_taken and scene._charm_slots[2].scale.x > 1.1:
+			shot_taken = true
+			await _screenshot("charm_pulse")
+		await process_frame
+	var b := _score(scene, scene._controller.last_result)
+	var fired: Array[int] = []
+	for trig in b.charm_triggers:
+		fired.append(int(trig.slot))
+	_check(fired.has(0) and fired.has(2), "Hair Trigger and Collector fired (%s)" % str(fired))
+	for i in 3:
+		_check((max_scale[i] > 1.1) == fired.has(i),
+			"Slot %d pulsed iff its charm changed the score (peak scale %.2f)" % [i, max_scale[i]])
+	change_scene_to_file(SHOP_SCENE)
+	await process_frame
+	await process_frame
+	_check(current_scene._owned_icons.get_child_count() == 5, "Shop shows the build as five sockets")
+	await _screenshot("charm_shop")
 
 
 # ----------------------------------------------------------------- helpers

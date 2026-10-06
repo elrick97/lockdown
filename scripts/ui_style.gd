@@ -56,6 +56,34 @@ static func nine_patch(piece: String, margins: Vector2i) -> NinePatchRect:
 	return n
 
 
+## A charm medallion at `px` square, mipmapped so the 256² render downsamples cleanly.
+static func charm_badge(icon: Texture2D, px: float) -> TextureRect:
+	var r := TextureRect.new()
+	r.texture = icon
+	r.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	r.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	r.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	r.custom_minimum_size = Vector2(px, px)
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return r
+
+
+## A row of charm medallions (the run's build); empty slots show a dim socket.
+static func charm_row(charms: Array, slots: int, px: float) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 16)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for i in slots:
+		if i < charms.size() and (charms[i] as CharmEffect).icon != null:
+			row.add_child(charm_badge((charms[i] as CharmEffect).icon, px))
+		else:
+			var empty := charm_badge(kit("socket"), px)
+			empty.modulate = Color(0.55, 0.55, 0.55)
+			row.add_child(empty)
+	return row
+
+
 static func _button_styles(t: Theme, type: StringName, kind: String) -> void:
 	var content := Vector2(44.0, 22.0)
 	t.set_stylebox("normal", type, box("button_%s_normal" % kind, MARGIN_BUTTON, content))

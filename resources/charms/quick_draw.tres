@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="CharmQuickDraw" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="CharmQuickDraw" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/charms/charm_quick_draw.gd" id="1_quickdraw"]
+[ext_resource type="Texture2D" path="res://assets/charms/quick_draw.png" id="2_icon"]
 
 [resource]
 script = ExtResource("1_quickdraw")
 display_name = "Quick Draw"
 description = "Lock all dice in Window 1 to score ×3 Mult."
 cost = 6
+icon = ExtResource("2_icon")

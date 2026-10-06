@@ -5,8 +5,11 @@ extends RefCounted
 ## Call skip() to resolve instantly (headless tests, balance sim).
 
 signal finished
+## A charm whose on_score changed this throw (breakdown.charm_triggers), in slot order.
+signal charm_triggered(slot: int)
 
 const COLOR_FLASH := Color(1.0, 0.82, 0.2)
+const CHARM_PULSE_GAP_S := 0.18
 
 ## Exposed so the scene can read the final score after the cascade completes.
 var final_score: int = 0
@@ -67,6 +70,11 @@ func play(breakdown: ScoreBreakdown, old_total: int, new_total: int,
 	# Step 2: combo label scales in from 0 (BACK ease gives a slight overshoot).
 	_tween.tween_property(_result_label, "scale", Vector2.ONE, 0.2) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+	# Step 2b: each charm that changed the score announces itself (slot pulse).
+	for trig in breakdown.charm_triggers:
+		_tween.tween_callback(charm_triggered.emit.bind(int(trig.slot)))
+		_tween.tween_interval(CHARM_PULSE_GAP_S)
 
 	# Step 3: throw score ticks from 0 to final_score.
 	_tween.tween_method(_tick_score, 0.0, float(final_score),

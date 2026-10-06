@@ -43,6 +43,7 @@ var _offer_trinkets: Array[Trinket] = []
 var _offer_carved: Array[CarvedDieOffer] = []
 var _buy_buttons: Array[Button] = []
 var _owned_label: Label
+var _owned_icons: HBoxContainer
 var _gold_panel: Panel
 
 @onready var _gold_label: Label = $GoldLabel
@@ -91,7 +92,7 @@ func _apply_layout() -> void:
 		_set_rect(_gold_panel, 0.0, 0.0, 1.0, 0.0, 24.0, 20.0, -24.0, 200.0)
 	_set_rect(_gold_label, 0.0, 0.0, 1.0, 0.0, 40.0, 40.0, -40.0, 180.0)
 	if _owned_label != null:
-		_set_rect(_owned_label, 0.0, 0.0, 1.0, 0.0, 60.0, 260.0, -60.0, 420.0)
+		_set_rect(_owned_label, 0.0, 0.0, 1.0, 0.0, 60.0, 240.0, -60.0, 400.0)
 	_set_rect(_status_label, 0.0, 0.0, 1.0, 0.0, 40.0, 900.0, -40.0, 1060.0)
 	_set_rect(_offer_container, 0.0, 0.0, 1.0, 0.0, 40.0, 1100.0, -40.0, 1960.0)
 	_set_rect(_reroll_button, 0.0, 1.0, 0.5, 1.0, 40.0, -300.0, -12.0, -120.0)
@@ -173,15 +174,20 @@ func _refresh_offers() -> void:
 			_offer_materials.append(null)
 			_offer_trinkets.append(null)
 			_offer_carved.append(item.res as CarvedDieOffer)
-		_offer_container.add_child(_build_offer_card(i, offer, item.res.description))
+		_offer_container.add_child(_build_offer_card(i, offer, item.res.description, item.res.get("icon")))
 
 
 ## Offer card (ui-theme spec): name · cost, the full effect description, and BUY.
-func _build_offer_card(index: int, offer: ShopOffer, description: String) -> PanelContainer:
+func _build_offer_card(index: int, offer: ShopOffer, description: String,
+		icon: Texture2D = null) -> PanelContainer:
 	var card := PanelContainer.new()
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 24)
 	card.add_child(row)
+	if icon != null:  # charms carry a medallion (add-charm-icons)
+		var badge := UiStyle.charm_badge(icon, 132.0)
+		badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(badge)
 	var text := VBoxContainer.new()
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(text)
@@ -258,6 +264,12 @@ func _update_owned_label() -> void:
 		names.append(charm.display_name)
 	var line := "Charms %d / %d" % [names.size(), CharmInventory.MAX_SLOTS]
 	_owned_label.text = line + (": " + ", ".join(names) if not names.is_empty() else "")
+	# The build as medallions under the line (add-charm-icons).
+	if _owned_icons != null:
+		_owned_icons.queue_free()
+	_owned_icons = UiStyle.charm_row(RunCoordinator.inventory.iter_charms(), CharmInventory.MAX_SLOTS, 150.0)
+	add_child(_owned_icons)
+	_set_rect(_owned_icons, 0.0, 0.0, 1.0, 0.0, 40.0, 420.0, -40.0, 580.0)
 
 
 func _update_button_states() -> void:

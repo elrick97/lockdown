@@ -31,13 +31,13 @@ jobs:
       # Only the game's own LFS assets: the style-frame archive is excluded from the
       # build and would burn the LFS bandwidth quota on every deploy.
       - name: Pull game LFS assets
-        run: git lfs pull --include="assets/dice/*,assets/table/*,assets/ui/*"
+        run: git lfs pull --include="assets/dice/*,assets/table/*,assets/ui/*,assets/charms/*"
 
       # A game asset left as an LFS pointer would export as a broken texture: fail
       # instead, so the live site keeps the last good build.
       - name: Check no game asset is an LFS pointer
         run: |
-          bad=$(grep -rl --include='*.png' --include='*.glb' "^version https://git-lfs" assets/dice assets/table assets/ui || true)
+          bad=$(grep -rl --include='*.png' --include='*.glb' "^version https://git-lfs" assets/dice assets/table assets/ui assets/charms || true)
           if [ -n "$bad" ]; then echo "LFS pointers not pulled:"; echo "$bad"; exit 1; fi
 
       - name: Keep the style-frame archive out of the import

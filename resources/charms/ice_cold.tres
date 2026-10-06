@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="CharmIceCold" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="CharmIceCold" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/charms/charm_ice_cold.gd" id="1_icecold"]
+[ext_resource type="Texture2D" path="res://assets/charms/ice_cold.png" id="2_icon"]
 
 [resource]
 script = ExtResource("1_icecold")
 display_name = "Ice Cold"
 description = "Skip Window 1 entirely to score +3 Mult."
 cost = 6
+icon = ExtResource("2_icon")

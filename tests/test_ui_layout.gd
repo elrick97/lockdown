@@ -56,8 +56,8 @@ func test_throw_screen_controls_in_thumb_zone() -> void:
 func test_charm_row_shows_owned_build_and_effects() -> void:
 	var scene := _throw_scene()
 	assert_eq(scene._charm_slots.size(), 5)
-	assert_eq(scene._charm_slots[0].text, "Quick Draw")
-	assert_eq(scene._charm_slots[1].text, "Loaded")
+	assert_eq(scene._charm_slots[0].tooltip_text, "Quick Draw")
+	assert_eq(scene._charm_slots[1].tooltip_text, "Loaded")
 	assert_true(scene._charm_slots[2].disabled, "empty slot is disabled")
 	scene._charm_slots[1].pressed.emit()
 	assert_true(scene._status.text.begins_with("Loaded: "), "tapping shows the effect")

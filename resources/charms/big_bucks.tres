@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="CharmBigBucks" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="CharmBigBucks" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/charms/charm_big_bucks.gd" id="1_bigbucks"]
+[ext_resource type="Texture2D" path="res://assets/charms/big_bucks.png" id="2_icon"]
 
 [resource]
 script = ExtResource("1_bigbucks")
 display_name = "Big Bucks"
 description = "Each locked 5 or 6 adds +3 Chips."
 cost = 3
+icon = ExtResource("2_icon")

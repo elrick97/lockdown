@@ -1818,3 +1818,165 @@ def export_production_ui():
     _ui_slab("Fill", 0.6, 0.26, 0.13, 0.04, 0.04, glow)
     written.append(_ui_render("timer_fill", cam, 64, 32))
     return written
+
+
+# ========================================================= charm icons (add-charm-icons)
+CHARM_DIR = os.path.join(PROJECT, "assets", "charms")
+CHARM_PX = 256
+# Enamel per archetype (charm-catalog archetypes).
+CHARM_ENAMEL = {
+    "speed": (0.62, 0.2, 0.015),
+    "slow": (0.02, 0.07, 0.32),
+    "value": (0.02, 0.24, 0.07),
+    "combo": (0.32, 0.015, 0.03),
+    "inversion": (0.2, 0.04, 0.3),
+}
+CHARMS = {
+    "quick_draw": "speed", "hair_trigger": "speed", "adrenaline": "speed",
+    "patient_zero": "slow", "ice_cold": "slow",
+    "loaded": "value", "big_bucks": "value", "precision": "value",
+    "snake_charmer": "inversion",
+    "collector": "combo", "high_roller": "combo", "straight_edge": "combo",
+}
+
+
+def _prism(name, pts, depth, mat, z_top=0.0, bevel=0.0):
+    """Extruded closed polygon (any simple outline), top rim bevelled."""
+    bm = bmesh.new()
+    top = [bm.verts.new((x, y, z_top)) for x, y in pts]
+    bot = [bm.verts.new((x, y, z_top - depth)) for x, y in pts]
+    bm.faces.new(top)
+    bm.faces.new(list(reversed(bot)))
+    n = len(pts)
+    for i in range(n):
+        bm.faces.new((bot[i], bot[(i + 1) % n], top[(i + 1) % n], top[i]))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    if bevel > 0:
+        rim = [bm.edges.get((top[i], top[(i + 1) % n])) for i in range(n)]
+        bmesh.ops.bevel(bm, geom=[e for e in rim if e is not None], offset=bevel, segments=3,
+                        affect="EDGES", profile=0.5, clamp_overlap=True)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    for poly in me.polygons:
+        poly.use_smooth = abs(poly.normal.z) < 0.999
+    return _mesh_obj(name, me, (mat,))
+
+
+def _stroke(name, path, width, depth, mat, z_top, closed=False):
+    """A thick polyline: one bevelled quad prism per segment plus round joints."""
+    hw = width / 2
+    bev = min(0.012, hw * 0.4)
+    segs = list(zip(path, path[1:] + ([path[0]] if closed else [])))
+    for i, ((x0, y0), (x1, y1)) in enumerate(segs):
+        dx, dy = x1 - x0, y1 - y0
+        ln = math.hypot(dx, dy) or 1.0
+        nx, ny = -dy / ln * hw, dx / ln * hw
+        _prism(f"{name}{i}", [(x0 + nx, y0 + ny), (x0 - nx, y0 - ny), (x1 - nx, y1 - ny), (x1 + nx, y1 + ny)],
+               depth, mat, z_top, bev)
+    for i, (x, y) in enumerate(path):
+        _prism(f"{name}J{i}", _circle(x, y, hw, 16), depth, mat, z_top, bev)
+
+
+def _disc(name, x, y, r, depth, mat, z_top, bevel=0.012):
+    return _prism(name, _circle(x, y, r, 32), depth, mat, z_top, bevel)
+
+
+def _charm_emblem(cid, ivory, dark, z):
+    """Raised ivory emblem per charm, hinting at its rule. Enamel face radius 0.96."""
+    d = 0.06
+    if cid == "quick_draw":  # three fast chevrons
+        for k in (-1, 0, 1):
+            ox = k * 0.26
+            _stroke(f"Chev{k}", [(ox - 0.12, 0.3), (ox + 0.12, 0.0), (ox - 0.12, -0.3)], 0.11, d, ivory, z)
+    elif cid == "hair_trigger":  # the bolt
+        _prism("Bolt", [((x - 0.5) * 1.75 - 0.03, (y - 0.5) * 1.6) for x, y in BOLT], d, ivory, z, 0.02)
+    elif cid == "adrenaline":  # heartbeat trace
+        _stroke("Beat", [(-0.6, 0.0), (-0.3, 0.0), (-0.18, 0.3), (0.0, -0.38), (0.14, 0.18),
+                         (0.26, 0.0), (0.6, 0.0)], 0.1, d, ivory, z)
+    elif cid == "patient_zero":  # hourglass
+        _prism("TopBulb", [(-0.3, 0.42), (0.3, 0.42), (0.04, 0.02), (-0.04, 0.02)], d, ivory, z, 0.015)
+        _prism("BotBulb", [(-0.04, -0.02), (0.04, -0.02), (0.3, -0.42), (-0.3, -0.42)], d, ivory, z, 0.015)
+        for sy in (1, -1):
+            _prism(f"Bar{sy}", [(x, y + sy * 0.5) for x, y in rrect_points(0.78, 0.1, 0.04)],
+                   d * 1.3, ivory, z + 0.01, 0.015)
+    elif cid == "ice_cold":  # snowflake
+        for k in range(3):
+            a = math.pi / 3 * k + math.pi / 2
+            ca, sa = math.cos(a), math.sin(a)
+            _stroke(f"Arm{k}", [(-0.55 * ca, -0.55 * sa), (0.55 * ca, 0.55 * sa)], 0.09, d, ivory, z)
+            for s in (1, -1):
+                bx, by = s * 0.34 * ca, s * 0.34 * sa
+                out = a if s > 0 else a + math.pi
+                for t in (1, -1):
+                    b2 = out + t * math.pi / 4
+                    _stroke(f"Br{k}{s}{t}", [(bx, by), (bx + 0.16 * math.cos(b2), by + 0.16 * math.sin(b2))],
+                            0.07, d, ivory, z)
+    elif cid == "loaded":  # a six-face
+        _prism("Face", rrect_points(0.86, 0.86, 0.16, 6), d, ivory, z, 0.03)
+        for px in (-0.2, 0.2):
+            for py in (-0.25, 0.0, 0.25):
+                _disc(f"Pip{px}{py}", px, py, 0.075, 0.02, dark, z + 0.012)
+    elif cid == "big_bucks":  # coin stack
+        for k in range(3):
+            _prism(f"Coin{k}", [(x, y - 0.3 + k * 0.22) for x, y in rrect_points(0.8, 0.16, 0.08)],
+                   d + k * 0.02, ivory, z + k * 0.02, 0.02)
+        _disc("TopCoin", 0.0, 0.32, 0.2, d + 0.08, ivory, z + 0.08, 0.02)
+        _disc("TopMark", 0.0, 0.32, 0.08, 0.02, dark, z + 0.09)
+    elif cid == "precision":  # target
+        _prism("RingOut", _circle(0, 0, 0.56, 48), d, ivory, z, 0.015)
+        _prism("GapOut", _circle(0, 0, 0.44, 48), 0.02, dark, z + 0.008, 0.0)
+        _prism("RingIn", _circle(0, 0, 0.32, 48), d, ivory, z + 0.012, 0.015)
+        _prism("GapIn", _circle(0, 0, 0.2, 48), 0.02, dark, z + 0.02, 0.0)
+        _disc("Bull", 0, 0, 0.1, d, ivory, z + 0.03)
+    elif cid == "snake_charmer":  # S-curve snake with a head and two eyes
+        path = [(0.4 * math.sin(t * 2.0 * math.pi), -0.55 + t * 0.9) for t in np.linspace(0, 1, 16)]
+        _stroke("Body", path, 0.13, d, ivory, z)
+        hx, hy = path[-1]
+        _disc("Head", hx, hy + 0.05, 0.14, d, ivory, z)
+        for s in (-1, 1):
+            _disc(f"Eye{s}", hx + s * 0.055, hy + 0.08, 0.03, 0.02, dark, z + 0.012, 0.006)
+    elif cid == "collector":  # four different little dice
+        pips = {0: [(0, 0)], 1: [(-1, 1), (1, -1)], 2: [(-1, 1), (0, 0), (1, -1)],
+                3: [(-1, 1), (1, 1), (-1, -1), (1, -1)]}
+        for k, (cx, cy) in enumerate([(-0.24, 0.24), (0.24, 0.24), (-0.24, -0.24), (0.24, -0.24)]):
+            _prism(f"Die{k}", [(cx + x, cy + y) for x, y in rrect_points(0.4, 0.4, 0.08, 4)], d, ivory, z, 0.02)
+            for j, (px, py) in enumerate(pips[k]):
+                _disc(f"P{k}{j}", cx + px * 0.1, cy + py * 0.1, 0.04, 0.02, dark, z + 0.012, 0.006)
+    elif cid == "high_roller":  # crown
+        _prism("Crown", [(-0.5, -0.3), (0.5, -0.3), (0.56, 0.28), (0.28, 0.02), (0.0, 0.4),
+                         (-0.28, 0.02), (-0.56, 0.28)], d, ivory, z, 0.02)
+        for x, y in ((-0.56, 0.32), (0.0, 0.45), (0.56, 0.32)):
+            _disc(f"Jewel{x}", x, y, 0.07, d, ivory, z)
+        _prism("Band", [(x, y - 0.38) for x, y in rrect_points(1.0, 0.12, 0.05)], d, ivory, z, 0.015)
+    elif cid == "straight_edge":  # five rising bars
+        for k in range(5):
+            h = 0.22 + k * 0.16
+            x = -0.48 + k * 0.24
+            _prism(f"Bar{k}", [(x + px, -0.42 + h / 2 + py) for px, py in rrect_points(0.17, h, 0.04)],
+                   d, ivory, z, 0.015)
+    else:
+        raise ValueError(cid)
+
+
+def export_charm_icons(only=None):
+    """One brass-and-enamel medallion per charm (256Â², alpha) into res://assets/charms/."""
+    pal = DIRECTIONS[PROD_DIRECTION]["pal"]
+    os.makedirs(CHARM_DIR, exist_ok=True)
+    written = []
+    for cid, arch in CHARMS.items():
+        if only and cid not in only:
+            continue
+        cam = _ui_stage(CHARM_PX, CHARM_PX)
+        brass = _ui_mat("Brass", pal["brass"], metal=0.95, rough=0.28, bump=0.12, bump_scale=120.0)
+        enamel = _ui_mat("Enamel", CHARM_ENAMEL[arch], rough=0.12, coat=1.0)
+        ivory = _ui_mat("Ivory", (0.86, 0.76, 0.56), rough=0.35, coat=0.4)
+        dark = _ui_mat("Ink", (0.04, 0.02, 0.015), rough=0.5)
+        _prism("Rim", _circle(0, 0, 1.18, 96), 0.16, brass, 0.0, 0.06)
+        _prism("Enamel", _circle(0, 0, 0.96, 96), 0.04, enamel, 0.01, 0.02)
+        for i, (x, y, _a) in enumerate(_perimeter(_circle(0, 0, 1.07, 96), 2 * math.pi * 1.07 / 24)):
+            _disc(f"Bead{i}", x, y, 0.03, 0.03, brass, 0.03, 0.01)
+        _charm_emblem(cid, ivory, dark, 0.08)
+        render_to(os.path.join(CHARM_DIR, cid + ".png"), (CHARM_PX, CHARM_PX), cam, transparent=True)
+        written.append(cid + ".png")
+    return written

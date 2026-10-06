@@ -19,6 +19,8 @@ TABLE_PX = {"felt.png": (1024, 1024), "backdrop.png": (1024, 2048)}
 UI = Path(__file__).resolve().parents[2] / "assets" / "ui"  # add-smoke-room-ui-art
 UI_PX = {f"button_{k}_{s}.png": (256, 128) for k in ("primary", "secondary")
          for s in ("normal", "pressed", "disabled")}
+CHARMS = Path(__file__).resolve().parents[2] / "assets" / "charms"  # add-charm-icons
+CHARM_COUNT = 12
 UI_PX.update({"panel.png": (256, 256), "plaque.png": (256, 96), "socket.png": (160, 160),
               "timer_frame.png": (512, 56), "timer_fill.png": (64, 32)})
 DIE_TRIS_MAX = 300
@@ -127,6 +129,17 @@ def main() -> int:
             print(f"  {'ok ' if ok else 'BAD'} ui/{png.name}: {w}x{h}")
             if not ok:
                 errors.append(f"{png}: {w}x{h}, expected {UI_PX.get(png.name)}")
+    if CHARMS.exists():
+        print("charm icons")
+        pngs = sorted(CHARMS.glob("*.png"))
+        if len(pngs) != CHARM_COUNT:
+            errors.append(f"charms: {len(pngs)} icons, expected {CHARM_COUNT}")
+        for png in pngs:
+            w, h = png_size(png.read_bytes()[:24])
+            ok = (w, h) == (256, 256)
+            print(f"  {'ok ' if ok else 'BAD'} charms/{png.name}: {w}x{h}")
+            if not ok:
+                errors.append(f"{png}: {w}x{h}, expected 256x256")
     print(f"\n{len(errors)} problem(s)")
     for e in errors:
         print("  -", e)

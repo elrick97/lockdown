@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="CharmLoaded" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="CharmLoaded" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/charms/charm_loaded.gd" id="1_loaded"]
+[ext_resource type="Texture2D" path="res://assets/charms/loaded.png" id="2_icon"]
 
 [resource]
 script = ExtResource("1_loaded")
 display_name = "Loaded"
 description = "Each locked 6-face adds +6 Chips."
 cost = 4
+icon = ExtResource("2_icon")

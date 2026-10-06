@@ -2,9 +2,7 @@
 
 ## Purpose
 The M1 catalog of 12 charms: each charm's trigger, effect and cost, as named tunables.
-
 ## Requirements
-
 ### Requirement: M1 charm catalog defines 12 charms
 The game SHALL ship 12 charm types for the M1 vertical slice. Each charm is a `CharmEffect` subclass saved as a `.tres` resource under `res://resources/charms/`. Costs and bonus amounts are **named tunables** (current values shown); balance changes are spec deltas, not silent code edits.
 
@@ -143,3 +141,18 @@ The charm SHALL apply: If the winning partition contains a Small Straight or Lar
 #### Scenario: No straight gives no mult
 - **WHEN** the winning partition contains no Small or Large Straight
 - **THEN** `charm_mult` remains 0.0
+
+### Requirement: Every M1 charm has its medallion
+Each of the 12 charm resources SHALL point its `icon` at `res://assets/charms/<id>.png`, a 256×256 medallion. The enamel colour shows the archetype:
+- **Speed:** amber.
+- **Slow:** deep blue.
+- **Value:** green.
+- **Combo:** oxblood.
+- **Inversion:** violet.
+
+The emblem hints at the rule, for example a bolt for Hair Trigger, an hourglass for Patient Zero, a six-face for Loaded and a snake for Snake Charmer.
+
+#### Scenario: All icons present
+- **WHEN** each `.tres` in `res://resources/charms/` is loaded
+- **THEN** its `icon` is a 256×256 texture
+

@@ -14,6 +14,9 @@ var combo_mult: int = 0
 ## Written by charm on_score hooks before final_score is computed.
 var charm_chips: int = 0
 var charm_mult: float = 0.0
+## One entry per charm whose on_score changed the breakdown, in slot order:
+## { slot: int, chips: int, mult: float } (deltas). Presentation only (trigger pulse).
+var charm_triggers: Array = []
 var heat: float = 1.0
 var final_score: int = 0
 

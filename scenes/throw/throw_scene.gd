@@ -37,6 +37,7 @@ var _hud_panel: Panel
 var _timer_track: NinePatchRect
 var _total_plaque: Panel
 var _end_card: Panel
+var _end_build: HBoxContainer
 var _charm_row: HBoxContainer
 var _charm_slots: Array[Button] = []
 var _felt: TextureRect
@@ -165,7 +166,7 @@ func _apply_layout() -> void:
 		_set_rect(_trinket_row, 0.0, 0.0, 1.0, 0.0, 40.0, 1800.0, -40.0, 1930.0)
 	if _end_panel != null:
 		_end_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		_set_rect(_end_card, 0.0, 0.0, 1.0, 0.0, 60.0, 560.0, -60.0, 1240.0)
+		_set_rect(_end_card, 0.0, 0.0, 1.0, 0.0, 60.0, 560.0, -60.0, 1400.0)
 		_set_rect(_end_title, 0.0, 0.0, 1.0, 0.0, 40.0, 620.0, -40.0, 760.0)
 		_set_rect(_end_summary, 0.0, 0.0, 1.0, 0.0, 40.0, 800.0, -40.0, 1100.0)
 		_set_rect(_new_run_button, 0.0, 1.0, 0.5, 1.0, 40.0, -300.0, -20.0, -120.0)
@@ -373,6 +374,7 @@ func _on_resolved(result: ThrowResult) -> void:
 	var new_total := old_total + breakdown.final_score
 	_cascade = ScoreCascade.new(self, _tumbler, _result, _total_label, _scoring_config)
 	_cascade.finished.connect(_on_cascade_finished)
+	_cascade.charm_triggered.connect(_pulse_charm)
 	_cascade.play(breakdown, old_total, new_total, _round.target)
 
 
@@ -463,9 +465,15 @@ func _build_charm_row() -> void:
 		slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		slot.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		slot.clip_text = true
+		slot.expand_icon = true
+		slot.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		slot.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
 		if i < charms.size():
 			var charm: CharmEffect = charms[i]
-			slot.text = charm.display_name
+			# Medallion over the socket; the name and rule show on tap (add-charm-icons).
+			slot.icon = charm.icon
+			slot.text = "" if charm.icon != null else charm.display_name
+			slot.tooltip_text = charm.display_name
 			slot.pressed.connect(func() -> void:
 				_status.text = "%s: %s" % [charm.display_name, charm.description])
 		else:
@@ -475,7 +483,27 @@ func _build_charm_row() -> void:
 		_charm_slots.append(slot)
 
 
+## Trigger pulse (add-charm-icons): the slot of a charm that changed the score pops
+## and flares, so the player sees which part of the build fired.
+func _pulse_charm(slot_index: int) -> void:
+	if slot_index < 0 or slot_index >= _charm_slots.size():
+		return
+	var slot := _charm_slots[slot_index]
+	slot.pivot_offset = slot.size / 2.0
+	var t := create_tween()
+	t.tween_property(slot, "scale", Vector2.ONE * 1.28, 0.08).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	t.parallel().tween_property(slot, "modulate", Color(1.6, 1.35, 0.9), 0.08)
+	t.tween_property(slot, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	t.parallel().tween_property(slot, "modulate", Color.WHITE, 0.3)
+
+
 func _show_end_panel(won: bool) -> void:
+	# The run's build as medallions under the summary.
+	if _end_build != null:
+		_end_build.queue_free()
+	_end_build = UiStyle.charm_row(RunCoordinator.inventory.iter_charms(), CHARM_SLOTS, 132.0)
+	_end_panel.add_child(_end_build)
+	_set_rect(_end_build, 0.0, 0.0, 1.0, 0.0, 100.0, 1150.0, -100.0, 1300.0)
 	_end_title.text = "RUN WON" if won else "GAME OVER"
 	_end_summary.text = "Ante %d / %d\nBest throw  %d\nFinal total  %d / %d\n\nSeed %d" % [
 		_arc.current_ante, _ante_config.targets.size(), RunCoordinator.best_throw,

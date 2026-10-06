@@ -7,6 +7,8 @@ extends Resource
 @export var display_name: String = ""
 @export var description: String = ""
 @export var cost: int = 0
+## Medallion shown in slots, shop cards and the end panel (add-charm-icons).
+@export var icon: Texture2D
 
 
 func on_throw(ctx: CharmContext) -> void:

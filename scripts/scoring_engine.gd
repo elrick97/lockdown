@@ -57,8 +57,15 @@ func score(result: ThrowResult, config: ScoringConfig,
 	# Fire charm on_score hooks in slot order before computing final total.
 	if inventory != null:
 		var ctx := CharmContext.from_result(result)
-		for charm in inventory.iter_charms():
-			charm.on_score(bd, ctx)
+		var charms := inventory.iter_charms()
+		for slot in charms.size():
+			var chips_before := bd.bonus_chips + bd.charm_chips
+			var mult_before := bd.combo_mult + bd.charm_mult
+			charms[slot].on_score(bd, ctx)
+			var d_chips := bd.bonus_chips + bd.charm_chips - chips_before
+			var d_mult := bd.combo_mult + bd.charm_mult - mult_before
+			if d_chips != 0 or not is_zero_approx(d_mult):
+				bd.charm_triggers.append({"slot": slot, "chips": d_chips, "mult": d_mult})
 
 	bd.final_score = floori(
 		float(bd.pips + bd.bonus_chips + bd.charm_chips)
