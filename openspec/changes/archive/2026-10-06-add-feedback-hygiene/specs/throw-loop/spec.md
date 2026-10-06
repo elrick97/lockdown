@@ -13,7 +13,7 @@ The scene root (HUD and labels) SHALL NOT move on a lock. Lock timing is unchang
 - **THEN** it scales up and settles back, the tray nudges, and the HUD stays still
 
 ### Requirement: Timer urgency
-During the last `urgency_s` (current 0.8 s) of a lock window:
+The timer SHALL signal urgency during the last `urgency_s` (current 0.8 s) of a lock window:
 - the timer fill SHALL shift toward oxblood in proportion to how little time is left, and pulse at `urgency_pulse_hz` (current 2 Hz; never above 3 Hz);
 - the frame pulses with it;
 - the seconds left SHALL show as a number (one decimal) at the bar's end.

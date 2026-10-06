@@ -224,21 +224,26 @@ When a scored throw contains at least one combo, `ThrowScene` SHALL shake when t
 ### Requirement: Lock feedback
 Each time a die is locked, `ThrowScene` SHALL:
 - punch the die to `lock_punch_scale` (current 1.18) and back over `lock_punch_s` (0.18 s);
-- play a small shake of `lock_shake_px` (3 px) over `lock_shake_s` (0.1 s);
+- nudge **only the dice tray** sideways by `lock_shake_px` (3 px) over `lock_shake_s` (0.1 s), returning exactly to its laid-out position;
 - keep the existing haptic.
 
-Lock timing is unchanged.
+The scene root (HUD and labels) SHALL NOT move on a lock. Lock timing is unchanged.
 
 #### Scenario: Lock punches
 - **WHEN** a die is locked during a window
-- **THEN** it scales up and settles back, and the table nudges
+- **THEN** it scales up and settles back, the tray nudges, and the HUD stays still
 
 ### Requirement: Timer urgency
-During the last `urgency_s` (current 0.8 s) of a lock window, the timer fill SHALL shift toward oxblood in proportion to how little time is left, and pulse. The frame pulses with it. Outside that stretch, and outside windows, both show untinted. Window timing is unchanged.
+The timer SHALL signal urgency during the last `urgency_s` (current 0.8 s) of a lock window:
+- the timer fill SHALL shift toward oxblood in proportion to how little time is left, and pulse at `urgency_pulse_hz` (current 2 Hz; never above 3 Hz);
+- the frame pulses with it;
+- the seconds left SHALL show as a number (one decimal) at the bar's end.
+
+Outside that stretch, and outside windows, both show untinted and the number hides. Window timing is unchanged.
 
 #### Scenario: Last stretch turns urgent
-- **WHEN** less than `urgency_s` remains in a window
-- **THEN** the fill is tinted toward red, and returns to untinted when the window ends
+- **WHEN** 0.5 s remain in a window
+- **THEN** the fill is tinted toward red and pulses at 2 Hz, "0.5" shows at the bar's end, and both return to normal when the window ends
 
 ### Requirement: Live locked-set preview
 During a lock window, after every lock, the throw screen SHALL show what the locked dice are worth so far. It scores the controller's read-only `snapshot_result()` with the scoring engine, without charms.
