@@ -63,6 +63,20 @@ func test_run_won_shows_panel() -> void:
 	assert_true(scene._end_title.text.to_upper().contains("RUN WON"))
 
 
+func test_end_panel_dims_everything_and_counts_the_total_up() -> void:
+	var scene := _scene()
+	scene._round.total = 420
+	RunCoordinator.arc.on_round_lost()
+	for c in [scene._charm_row, scene._hud, scene._throw_button, scene._tray]:
+		assert_lt((c as Node).get_index(), scene._end_panel.get_index(), "%s is dimmed by the panel" % c.name)
+	assert_lt(scene._end_panel.get_index(), scene._cover.get_index(), "focus cover stays on top")
+	assert_false(scene._throw_button.visible, "THROW hidden behind the panel")
+	assert_eq(scene._end_score.text, "0", "final total starts at 0")
+	await wait_seconds(2.5)
+	assert_eq(scene._end_score.text, "420", "and counts up to the final total")
+	assert_true(scene._end_score_caption.text.contains(str(scene._round.target)), "target shown")
+
+
 func test_end_panel_buttons_meet_tap_size_in_thumb_zone() -> void:
 	var scene := _scene()
 	RunCoordinator.arc.on_round_lost()

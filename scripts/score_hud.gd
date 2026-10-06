@@ -25,7 +25,6 @@ var _mult_plaque: Panel
 var _heat_plaque: Panel
 var _bar: Control
 var _transients: Array[Node] = []
-var _spark_tex: Texture2D
 
 
 func _init() -> void:
@@ -55,30 +54,10 @@ func _init() -> void:
 	target_fill.size = Vector2(0.0, BAR_SIZE.y - BAR_FILL_INSET.y * 2.0)
 	target_fill.visible = false
 	stamp_label = Label.new()
-	stamp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	stamp_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	stamp_label.add_theme_font_size_override("font_size", 120)
-	stamp_label.add_theme_color_override("font_color", UiStyle.AMBER)
-	stamp_label.add_theme_color_override("font_outline_color", UiStyle.OUTLINE)
-	stamp_label.add_theme_constant_override("outline_size", 22)
-	stamp_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
-	stamp_label.add_theme_constant_override("shadow_offset_x", 6)
-	stamp_label.add_theme_constant_override("shadow_offset_y", 9)
+	style_stamp(stamp_label)
 	stamp_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	stamp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stamp_label.visible = false
 	add_child(stamp_label)
-	var g := Gradient.new()
-	g.set_color(0, Color(1, 1, 1, 1))
-	g.set_color(1, Color(1, 1, 1, 0))
-	var gt := GradientTexture2D.new()
-	gt.gradient = g
-	gt.fill = GradientTexture2D.FILL_RADIAL
-	gt.fill_from = Vector2(0.5, 0.5)
-	gt.fill_to = Vector2(0.5, 0.0)
-	gt.width = 32
-	gt.height = 32
-	_spark_tex = gt
 	reset(1.0)
 
 
@@ -212,14 +191,9 @@ func stamp(text: String) -> void:
 	stamp_label.pivot_offset = stamp_label.size / 2.0
 	stamp_label.global_position = stamp_center - stamp_label.size / 2.0
 	stamp_label.rotation = STAMP_ANGLE
-	stamp_label.scale = Vector2(2.6, 2.6)
 	stamp_label.modulate = Color(1, 1, 1, 0)
 	stamp_label.visible = true
-	var t := stamp_label.create_tween()
-	t.tween_property(stamp_label, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	t.parallel().tween_property(stamp_label, "modulate:a", 1.0, 0.1)
-	t.tween_property(stamp_label, "scale", Vector2.ONE * 1.08, 0.08)
-	t.tween_property(stamp_label, "scale", Vector2.ONE, 0.12)
+	slam(stamp_label)
 
 
 func clear_stamp() -> void:
@@ -232,10 +206,18 @@ func clear_stamp() -> void:
 
 ## Brass-spark burst at `at` (global); `amount` scales with the combo tier.
 func burst(at: Vector2, amount: int) -> void:
+	var p := spawn_burst(self, at, amount)
+	if p != null:
+		_transients.append(p)
+		p.tree_exiting.connect(_transients.erase.bind(p))  # it frees itself when done
+
+
+## A one-shot spark burst under any parent (the end panel reuses it); frees itself.
+static func spawn_burst(parent: Node, at: Vector2, amount: int) -> CPUParticles2D:
 	if amount <= 0:
-		return
+		return null
 	var p := CPUParticles2D.new()
-	p.texture = _spark_tex
+	p.texture = spark_texture()
 	p.amount = amount
 	p.one_shot = true
 	p.explosiveness = 0.95
@@ -253,11 +235,57 @@ func burst(at: Vector2, amount: int) -> void:
 	ramp.set_color(0, Color(1.0, 0.95, 0.7, 1.0))
 	ramp.set_color(1, Color(1.0, 0.45, 0.08, 0.0))
 	p.color_ramp = ramp
-	add_child(p)
+	parent.add_child(p)
 	p.global_position = at
 	p.emitting = true
-	_transients.append(p)
-	get_tree().create_timer(p.lifetime + 0.2).timeout.connect(_drop.bind(p))
+	p.finished.connect(p.queue_free)
+	return p
+
+
+static var _spark_tex: Texture2D
+
+
+static func spark_texture() -> Texture2D:
+	if _spark_tex == null:
+		var g := Gradient.new()
+		g.set_color(0, Color(1, 1, 1, 1))
+		g.set_color(1, Color(1, 1, 1, 0))
+		var gt := GradientTexture2D.new()
+		gt.gradient = g
+		gt.fill = GradientTexture2D.FILL_RADIAL
+		gt.fill_from = Vector2(0.5, 0.5)
+		gt.fill_to = Vector2(0.5, 0.0)
+		gt.width = 32
+		gt.height = 32
+		_spark_tex = gt
+	return _spark_tex
+
+
+## Big tilted stamp text in the HUD style (combo banner, end-of-run title).
+static func style_stamp(l: Label, font_size: int = 120, color: Color = UiStyle.AMBER) -> void:
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", font_size)
+	l.add_theme_color_override("font_color", color)
+	l.add_theme_color_override("font_outline_color", UiStyle.OUTLINE)
+	l.add_theme_constant_override("outline_size", 22)
+	l.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
+	l.add_theme_constant_override("shadow_offset_x", 6)
+	l.add_theme_constant_override("shadow_offset_y", 9)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+## Slam a label in: oversized and transparent → settles with a small bounce.
+static func slam(l: Control, from_scale: float = 2.6) -> Tween:
+	l.pivot_offset = l.size / 2.0
+	l.scale = Vector2.ONE * from_scale
+	l.modulate.a = 0.0
+	var t := l.create_tween()
+	t.tween_property(l, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.parallel().tween_property(l, "modulate:a", 1.0, 0.1)
+	t.tween_property(l, "scale", Vector2.ONE * 1.08, 0.08)
+	t.tween_property(l, "scale", Vector2.ONE, 0.12)
+	return t
 
 
 func clear_transients() -> void:

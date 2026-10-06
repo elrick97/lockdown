@@ -66,10 +66,11 @@ func test_slots_show_medallions_and_pulse() -> void:
 	var loaded: CharmEffect = RunCoordinator.inventory.iter_charms()[1]
 	assert_same(scene._charm_slots[1].icon, loaded.icon, "slot shows the charm's icon")
 	assert_null(scene._charm_slots[3].icon, "empty slot has no icon")
-	scene._pulse_charm(1)
-	await wait_process_frames(3)
-	assert_gt(scene._charm_slots[1].scale.x, 1.0, "triggered slot pops")
-	await wait_seconds(0.5)
+	var t: Tween = scene._pulse_charm(1)
+	t.pause()  # step it by hand: frame-time independent
+	t.custom_step(0.08)
+	assert_gt(scene._charm_slots[1].scale.x, 1.2, "triggered slot pops")
+	t.custom_step(1.0)
 	assert_almost_eq(scene._charm_slots[1].scale.x, 1.0, 0.01, "and settles")
 
 

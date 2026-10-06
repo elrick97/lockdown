@@ -43,6 +43,9 @@ var _timer_track: NinePatchRect
 var _total_plaque: Panel
 var _end_card: Panel
 var _end_build: HBoxContainer
+var _end_score: Label
+var _end_score_caption: Label
+var _end_build_caption: Label
 var _charm_row: HBoxContainer
 var _charm_slots: Array[Button] = []
 var _felt: TextureRect
@@ -142,6 +145,10 @@ func _ready() -> void:
 	_tumbler = Viewport3DDiceTumbler.new()
 	_tray.add_child(_tumbler)
 	_build_charm_row()
+	# Draw order: the end panel dims everything built above, and the focus cover
+	# stays on top of all of it.
+	move_child(_end_panel, -1)
+	move_child(_cover, -1)
 
 	_update_round_labels()
 	_hud.reset(_scoring_config.heat_max)  # idle HEAT: what a fast lock would earn
@@ -182,9 +189,14 @@ func _apply_layout() -> void:
 		_set_rect(_trinket_row, 0.0, 0.0, 1.0, 0.0, 40.0, 1800.0, -40.0, 1930.0)
 	if _end_panel != null:
 		_end_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		_set_rect(_end_card, 0.0, 0.0, 1.0, 0.0, 60.0, 560.0, -60.0, 1400.0)
-		_set_rect(_end_title, 0.0, 0.0, 1.0, 0.0, 40.0, 620.0, -40.0, 760.0)
-		_set_rect(_end_summary, 0.0, 0.0, 1.0, 0.0, 40.0, 800.0, -40.0, 1100.0)
+		# End-of-run card (run-flow spec): stamped title, the final total counting up,
+		# a compact summary, then the run's build.
+		_set_rect(_end_card, 0.0, 0.0, 1.0, 0.0, 60.0, 480.0, -60.0, 1400.0)
+		_set_rect(_end_title, 0.0, 0.0, 1.0, 0.0, 40.0, 330.0, -40.0, 560.0)
+		_set_rect(_end_score_caption, 0.0, 0.0, 1.0, 0.0, 100.0, 560.0, -100.0, 610.0)
+		_set_rect(_end_score, 0.0, 0.0, 1.0, 0.0, 100.0, 600.0, -100.0, 760.0)
+		_set_rect(_end_summary, 0.0, 0.0, 1.0, 0.0, 100.0, 790.0, -100.0, 1010.0)
+		_set_rect(_end_build_caption, 0.0, 0.0, 1.0, 0.0, 100.0, 1110.0, -100.0, 1160.0)
 		_set_rect(_new_run_button, 0.0, 1.0, 0.5, 1.0, 40.0, -300.0, -20.0, -120.0)
 		_set_rect(_menu_button, 0.5, 1.0, 1.0, 1.0, 20.0, -300.0, -40.0, -120.0)
 	_cover.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -478,9 +490,21 @@ func _build_end_panel() -> void:
 	_end_card = Panel.new()
 	_end_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_end_panel.add_child(_end_card)
-	_end_title = _end_label(76)
-	_end_summary = _end_label(46)
+	_end_title = _end_label(124)
+	ScoreHud.style_stamp(_end_title, 124)
+	_end_score_caption = _end_label(30)
+	_end_score_caption.add_theme_color_override("font_color", UiStyle.MUTED)
+	_end_score = _end_label(130)
+	_end_score.theme_type_variation = &"HudValue"
+	_end_score.add_theme_color_override("font_outline_color", UiStyle.OUTLINE)
+	_end_score.add_theme_constant_override("outline_size", 14)
+	_end_summary = _end_label(42)
+	_end_summary.add_theme_constant_override("line_spacing", 10)
+	_end_build_caption = _end_label(30)
+	_end_build_caption.add_theme_color_override("font_color", UiStyle.MUTED)
+	_end_build_caption.text = "YOUR BUILD"
 	_new_run_button = _end_button("NEW RUN")
+	_new_run_button.theme_type_variation = &"ThrowButton"
 	_new_run_button.pressed.connect(_on_new_run_pressed)
 	_menu_button = _end_button("MENU")
 	_menu_button.pressed.connect(_on_menu_pressed)
@@ -535,9 +559,9 @@ func _build_charm_row() -> void:
 
 ## Trigger pulse (add-charm-icons): the slot of a charm that changed the score pops
 ## and flares, so the player sees which part of the build fired.
-func _pulse_charm(slot_index: int) -> void:
+func _pulse_charm(slot_index: int) -> Tween:
 	if slot_index < 0 or slot_index >= _charm_slots.size():
-		return
+		return null
 	var slot := _charm_slots[slot_index]
 	slot.pivot_offset = slot.size / 2.0
 	var t := create_tween()
@@ -545,6 +569,7 @@ func _pulse_charm(slot_index: int) -> void:
 	t.parallel().tween_property(slot, "modulate", Color(1.6, 1.35, 0.9), 0.08)
 	t.tween_property(slot, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 	t.parallel().tween_property(slot, "modulate", Color.WHITE, 0.3)
+	return t
 
 
 func _show_end_panel(won: bool) -> void:
@@ -553,13 +578,36 @@ func _show_end_panel(won: bool) -> void:
 		_end_build.queue_free()
 	_end_build = UiStyle.charm_row(RunCoordinator.inventory.iter_charms(), CHARM_SLOTS, 132.0)
 	_end_panel.add_child(_end_build)
-	_set_rect(_end_build, 0.0, 0.0, 1.0, 0.0, 100.0, 1150.0, -100.0, 1300.0)
+	_set_rect(_end_build, 0.0, 0.0, 1.0, 0.0, 100.0, 1170.0, -100.0, 1320.0)
 	_end_title.text = "RUN WON" if won else "GAME OVER"
-	_end_summary.text = "Ante %d / %d\nBest throw  %d\nFinal total  %d / %d\n\nSeed %d" % [
-		_arc.current_ante, _ante_config.targets.size(), RunCoordinator.best_throw,
-		_round.total, _round.target, RngService.run_seed]
+	_end_title.add_theme_color_override("font_color", UiStyle.AMBER if won else UiStyle.CREAM)
+	_end_score_caption.text = "FINAL TOTAL  /  TARGET %d" % _round.target
+	_end_summary.text = "Ante %d / %d   ·   Best throw %d\nSeed %d" % [
+		_arc.current_ante, _ante_config.targets.size(), RunCoordinator.best_throw, RngService.run_seed]
 	_skip_button.visible = false
+	_throw_button.visible = false  # NEW RUN / MENU are the only actions now
 	_end_panel.visible = true
+	_play_end_reveal(won)
+
+
+## The end-of-run reveal: the title slams in (win: heavy shake and sparks; loss: a
+## thud), then the final total counts up and lands with a punch.
+func _play_end_reveal(won: bool) -> void:
+	_end_score.text = "0"
+	_end_title.rotation = ScoreHud.STAMP_ANGLE
+	await get_tree().process_frame  # labels have their laid-out size now
+	if not is_inside_tree() or not _end_panel.visible:
+		return
+	ScoreHud.slam(_end_title)
+	var tier := 4 if won else 2
+	_screen_shake(_fx.shake_px_by_tier[tier], _fx.shake_s_by_tier[tier])
+	if won:
+		ScoreHud.spawn_burst(_end_panel, _end_title.get_global_rect().get_center(), _fx.sparks_by_tier[5])
+	var t := create_tween()
+	t.tween_interval(0.35)
+	t.tween_method(func(v: float) -> void: _end_score.text = str(roundi(v)),
+		0.0, float(_round.total), _fx.tick_s(_round.total, _scoring_config.cascade_duration_s))
+	t.tween_callback(func() -> void: _hud.punch(_end_score, 1.3, 0.3))
 
 
 func _on_new_run_pressed() -> void:

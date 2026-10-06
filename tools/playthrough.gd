@@ -268,9 +268,14 @@ func _scenario_run_flow() -> void:
 	_check(_rc.arc.current_ante == 1 and _rc.ledger.gold == 0, "PLAY starts a fresh run at ante 1")
 	var scene: Control = current_scene
 	_rc.record_throw(57)
+	scene._round.total = 57  # setup: something to count up
 	_rc.arc.on_round_lost()  # setup: end the run as a loss
 	_check(scene._end_panel.visible and "GAME OVER" in scene._end_title.text, "Game over shows the end panel")
 	_check("57" in scene._end_summary.text, "End panel lists the best throw")
+	var t_end := Time.get_ticks_msec()
+	await _wait(func() -> bool: return Time.get_ticks_msec() - t_end >= 1800)
+	_check(scene._end_score.text == str(scene._round.total),
+		"End panel's final total counted up to %d (shows %s)" % [scene._round.total, scene._end_score.text])
 	await _screenshot("end_panel_game_over")
 	var old_seed: int = _rng.run_seed
 	_press(scene._new_run_button)
