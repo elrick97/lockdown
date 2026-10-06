@@ -84,7 +84,7 @@ func test_shop_cards_and_owned_row_show_icons() -> void:
 	for i in shop._buy_buttons.size():
 		var card := shop._buy_buttons[i].get_parent().get_parent() as Control
 		var has_badge := not card.find_children("*", "TextureRect", true, false).is_empty()
-		assert_eq(has_badge, shop._offer_charms[i] != null, "offer %d: icon iff it is a charm" % i)
+		assert_true(has_badge, "offer %d shows an icon (charm, die or trinket)" % i)
 
 
 func test_end_panel_shows_the_build() -> void:
@@ -93,3 +93,27 @@ func test_end_panel_shows_the_build() -> void:
 	assert_eq(scene._end_build.get_child_count(), 5)
 	assert_same((scene._end_build.get_child(0) as TextureRect).texture,
 		RunCoordinator.inventory.iter_charms()[0].icon)
+
+
+# --- add-shop-icons ---
+
+func test_every_sellable_item_has_a_256_icon() -> void:
+	var paths := [
+		"res://resources/dice_materials/iron.tres", "res://resources/dice_materials/glass.tres",
+		"res://resources/trinkets/re_tumble.tres", "res://resources/trinkets/freeze_timer.tres",
+		"res://resources/carved_dice/wild_6_bone.tres", "res://resources/carved_dice/gem_5_bone.tres",
+		"res://resources/carved_dice/spark_4_bone.tres",
+	]
+	for p in paths:
+		var icon: Texture2D = load(p).get("icon")
+		assert_not_null(icon, "%s has an icon" % p)
+		if icon != null:
+			assert_eq(icon.get_size(), Vector2(256, 256), "%s icon is 256²" % p)
+
+
+func test_trinket_buttons_show_their_chip() -> void:
+	var scene := _throw_scene()
+	RunCoordinator.trinket_inventory.add_trinket(load("res://resources/trinkets/freeze_timer.tres"))
+	scene._rebuild_trinket_buttons()
+	var btn := scene._trinket_row.get_child(scene._trinket_row.get_child_count() - 1) as Button
+	assert_eq(btn.icon.resource_path, "res://assets/shop/freeze_timer.png")

@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="TrinketReTumble" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="TrinketReTumble" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/trinkets/trinket_re_tumble.gd" id="1_retumble"]
+[ext_resource type="Texture2D" path="res://assets/shop/re_tumble.png" id="9_icon"]
 
 [resource]
 script = ExtResource("1_retumble")
 display_name = "Re-Tumble"
 description = "Re-roll all unlocked dice immediately."
 cost = 3
+icon = ExtResource("9_icon")

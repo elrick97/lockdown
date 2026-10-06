@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="CarvedDieOffer" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="CarvedDieOffer" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/carved_die_offer.gd" id="1_carve"]
+[ext_resource type="Texture2D" path="res://assets/shop/spark_4_bone.png" id="9_icon"]
 
 [resource]
 script = ExtResource("1_carve")
@@ -10,3 +11,4 @@ cost = 5
 material_id = &"standard"
 carved_face = 4
 carve_type = &"spark"
+icon = ExtResource("9_icon")

@@ -2098,3 +2098,136 @@ def _halo_material():
     except (AttributeError, TypeError):
         pass
     return m
+
+
+# ========================================================= shop icons (add-shop-icons)
+SHOP_DIR = os.path.join(PROJECT, "assets", "shop")
+SHOP_PX = 256
+# Die offers: id -> (material kind, carved face or None, carve type or None).
+SHOP_DICE = {
+    "iron": ("iron", None, None),
+    "glass": ("glass", None, None),
+    "wild_6_bone": ("bone", 6, "wild"),
+    "gem_5_bone": ("bone", 5, "gem"),
+    "spark_4_bone": ("bone", 4, "spark"),
+}
+SHOP_TRINKETS = ("re_tumble", "freeze_timer")
+
+
+def _temp_images(name, alb, nrm, orm):
+    """Blender images from atlas arrays via the temp dir (nothing written to the repo)."""
+    os.makedirs(RAW, exist_ok=True)
+    return (save_image(name + "_a", alb, os.path.join(RAW, name + "_a.png")),
+            save_image(name + "_n", nrm, os.path.join(RAW, name + "_n.png"), True),
+            save_image(name + "_o", orm, os.path.join(RAW, name + "_o.png"), True))
+
+
+def _shop_lights():
+    make_world_and_lights({"ambient": ((0.42, 0.28, 0.17), 0.45), "lights": [
+        {"type": "SPOT", "color": (1.0, 0.86, 0.66), "energy": 420.0, "loc": (0.4, -1.0, 4.5),
+         "dir": (-0.08, 0.2, -1.0), "extra": {"spot_size": 1.0, "spot_blend": 0.6, "shadow_soft_size": 0.35}},
+        {"type": "AREA", "color": (1.0, 0.62, 0.3), "energy": 40.0, "loc": (-2.5, 1.0, 1.4),
+         "dir": (1.0, -0.4, -0.3), "extra": {"size": 1.5}},
+        {"type": "AREA", "color": (0.6, 0.7, 1.0), "energy": 14.0, "loc": (2.5, 1.5, 1.6),
+         "dir": (-1.0, -0.6, -0.4), "extra": {"size": 1.5}},
+    ]})
+
+
+def _shop_die_icon(oid, kind, face, carve, pal):
+    reset_scene()
+    setup_render({"samples": 96})
+    _shop_lights()
+    alb, nrm, orm = make_die_atlas(kind, pal, {face: carve} if carve else None)
+    imgs = _temp_images(f"shop_{oid}", alb, nrm, orm)
+    glass = kind == "glass"
+    mat = pbr_material(f"M_{oid}", *imgs, glass=glass, rim=(1.0, 0.7, 0.35) if glass else None)
+    me = make_die_mesh("ShopDie")
+    ob = _mesh_obj("Die", me, (mat,))
+    top = face if face else 6
+    ob.matrix_world = Matrix.Translation((0, 0, 0.5)) @ die_rotation(top, 30.0).to_4x4() @ Matrix.Scale(1.0 / DIE, 4)
+    # Felt coaster with a brass rim: every die offer sits on one, so dice read as dice.
+    felt = _ui_mat("Felt", tuple(c * 0.55 for c in pal["felt"]), rough=0.95, bump=0.25, bump_scale=200.0)
+    brass = _ui_mat("Brass", pal["brass"], metal=0.95, rough=0.28)
+    _prism("Coaster", _circle(0, 0, 1.0, 96), 0.08, felt, 0.0, 0.02)
+    bpy.ops.mesh.primitive_torus_add(major_radius=1.02, minor_radius=0.04, major_segments=96,
+                                     minor_segments=10, location=(0, 0, 0.0))
+    ring = bpy.context.active_object
+    ring.data.materials.append(brass)
+    for p in ring.data.polygons:
+        p.use_smooth = True
+    if carve:  # a carved die glows faintly amber at the base: it is special
+        glow = _ui_mat("Glow", (1.0, 0.55, 0.12), emit=((1.0, 0.36, 0.035), 0.9))
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.78, minor_radius=0.025, major_segments=96,
+                                         minor_segments=8, location=(0, 0, 0.005))
+        bpy.context.active_object.data.materials.append(glow)
+    cam_d = bpy.data.cameras.new("ShopCam")
+    cam_d.lens = 50.0
+    cam = _link(bpy.data.objects.new("ShopCam", cam_d))
+    cam.location = (0.0, -2.75, 2.5)
+    cam.rotation_euler = (Vector((0.0, 0.0, 0.32)) - cam.location).to_track_quat("-Z", "Y").to_euler()
+    render_to(os.path.join(SHOP_DIR, oid + ".png"), (SHOP_PX, SHOP_PX), cam, transparent=True)
+
+
+def _arc(cx, cy, r, a0, a1, n=24):
+    return [(cx + r * math.cos(a0 + (a1 - a0) * i / n), cy + r * math.sin(a0 + (a1 - a0) * i / n)) for i in range(n + 1)]
+
+
+def _trinket_emblem(tid, ivory, dark, z):
+    d = 0.06
+    if tid == "re_tumble":  # two chasing arrows: everything rolls again
+        for k, (a0, a1) in enumerate(((math.radians(110), math.radians(330)), (math.radians(290), math.radians(510)))):
+            pts = _arc(0, 0, 0.5, a0, a1 - math.radians(70))
+            _stroke(f"Arc{k}", pts, 0.12, d, ivory, z)
+            ex, ey = pts[-1]
+            ta = a1 - math.radians(70) + math.pi / 2  # tangent direction at the end
+            tip = (ex + 0.22 * math.cos(ta), ey + 0.22 * math.sin(ta))
+            nx, ny = math.cos(ta - math.pi / 2), math.sin(ta - math.pi / 2)
+            _prism(f"Head{k}", [(ex + 0.15 * nx, ey + 0.15 * ny), tip, (ex - 0.15 * nx, ey - 0.15 * ny)],
+                   d, ivory, z, 0.015)
+    elif tid == "freeze_timer":  # stopwatch with pause bars
+        ring = _arc(0, -0.06, 0.48, 0, 2 * math.pi, 48)[:-1]
+        _stroke("Watch", ring, 0.11, d, ivory, z, closed=True)
+        _prism("Crown", [(x, y + 0.55) for x, y in rrect_points(0.2, 0.14, 0.04)], d, ivory, z, 0.015)
+        _prism("Stem", [(x, y + 0.45) for x, y in rrect_points(0.08, 0.1, 0.02)], d, ivory, z, 0.01)
+        for sx in (-0.11, 0.11):
+            _prism(f"Pause{sx}", [(x + sx, y - 0.06) for x, y in rrect_points(0.12, 0.42, 0.04)], d, ivory, z, 0.015)
+    else:
+        raise ValueError(tid)
+
+
+def _shop_trinket_icon(tid, pal):
+    cam = _ui_stage(SHOP_PX, SHOP_PX)
+    brass = _ui_mat("Brass", pal["brass"], metal=0.95, rough=0.28, bump=0.12, bump_scale=120.0)
+    walnut = _ui_mat("Walnut", (0.13, 0.065, 0.035), rough=0.4, coat=0.5, grain=(1.0, 8.0, 1.0))
+    ivory = _ui_mat("Ivory", (0.86, 0.76, 0.56), rough=0.35, coat=0.4)
+    dark = _ui_mat("Ink", (0.04, 0.02, 0.015), rough=0.5)
+    # A gaming chip: walnut body, brass edge inserts, brass inner ring.
+    _prism("Chip", _circle(0, 0, 1.18, 96), 0.16, walnut, 0.0, 0.05)
+    for i in range(8):
+        a = 2 * math.pi * i / 8
+        pts = [(math.cos(a + s) * r, math.sin(a + s) * r) for r, s in
+               ((1.19, -0.16), (1.19, 0.16), (0.98, 0.13), (0.98, -0.13))]
+        _prism(f"Insert{i}", pts, 0.02, brass, 0.012, 0.008)
+    bpy.ops.mesh.primitive_torus_add(major_radius=0.86, minor_radius=0.03, major_segments=96,
+                                     minor_segments=10, location=(0, 0, 0.01))
+    ring = bpy.context.active_object
+    ring.data.materials.append(brass)
+    _trinket_emblem(tid, ivory, dark, 0.07)
+    render_to(os.path.join(SHOP_DIR, tid + ".png"), (SHOP_PX, SHOP_PX), cam, transparent=True)
+
+
+def export_shop_icons(only=None):
+    """Shop offer icons (256Â², alpha) into res://assets/shop/: dice on felt coasters,
+    trinkets as walnut-and-brass chips."""
+    pal = DIRECTIONS[PROD_DIRECTION]["pal"]
+    os.makedirs(SHOP_DIR, exist_ok=True)
+    written = []
+    for oid, (kind, face, carve) in SHOP_DICE.items():
+        if not only or oid in only:
+            _shop_die_icon(oid, kind, face, carve, pal)
+            written.append(oid + ".png")
+    for tid in SHOP_TRINKETS:
+        if not only or tid in only:
+            _shop_trinket_icon(tid, pal)
+            written.append(tid + ".png")
+    return written

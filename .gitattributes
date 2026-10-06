@@ -12,3 +12,4 @@ assets/dice/*.glb filter=lfs diff=lfs merge=lfs -text
 assets/table/*.png filter=lfs diff=lfs merge=lfs -text
 assets/ui/*.png filter=lfs diff=lfs merge=lfs -text
 assets/charms/*.png filter=lfs diff=lfs merge=lfs -text
+assets/shop/*.png filter=lfs diff=lfs merge=lfs -text

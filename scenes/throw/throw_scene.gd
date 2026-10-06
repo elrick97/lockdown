@@ -310,6 +310,10 @@ func _rebuild_trinket_buttons() -> void:
 		var btn := Button.new()
 		btn.text = t.display_name
 		btn.add_theme_font_size_override("font_size", 36)
+		if t.icon != null:  # the same chip as on its shop card (add-shop-icons)
+			btn.icon = t.icon
+			btn.add_theme_constant_override("icon_max_width", 92)
+			btn.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.custom_minimum_size.y = 130.0  # ui-theme spec: ≥ 48 dp
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_trinket_row.add_child(btn)

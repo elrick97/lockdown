@@ -13,6 +13,8 @@ static var _path_by_id: Dictionary = {}  # material_id -> resource path (no stro
 @export var shatter_on_reroll: bool = false
 @export var tumble_duration_factor: float = 1.0
 @export var cost: int = 0
+## Shop card icon (add-shop-icons); null for dice that are never sold.
+@export var icon: Texture2D
 
 ## The material whose `material_id` is `id` (e.g. &"standard" → bone.tres), or null.
 ## Indexes the materials folder once; list_directory also sees exported remaps. Only
